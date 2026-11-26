@@ -34,7 +34,12 @@ class Requirement:
 
 @dataclass(frozen=True)
 class Check:
-    """A verification condition. ``command`` is recorded, never executed here."""
+    """A verification condition.
+
+    ``command`` is a description for people and is never executed. Local runs
+    use the program-defined command registered for ``check_id``
+    (see ``tasks.verification.SUPPORTED_CHECKS``).
+    """
 
     check_id: str
     description: str

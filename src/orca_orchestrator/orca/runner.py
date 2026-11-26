@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Mapping, Protocol, Sequence
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,11 @@ class SubprocessRunner:
 
     The environment is inherited unchanged so that a Coordinator process keeps
     the terminal binding Orca assigned to it. Nothing is added or removed.
+    Callers that need a different environment (local verification) pass ``env``.
     """
+
+    def __init__(self, env: Mapping[str, str] | None = None) -> None:
+        self._env = dict(env) if env is not None else None
 
     def run(
         self, argv: Sequence[str], *, timeout: float, cwd: str | None = None
@@ -55,6 +59,7 @@ class SubprocessRunner:
                 timeout=timeout,
                 cwd=cwd,
                 stdin=subprocess.DEVNULL,
+                env=self._env,
             )
         except subprocess.TimeoutExpired:
             raise CommandTimeout(f"timed out after {timeout}s") from None
