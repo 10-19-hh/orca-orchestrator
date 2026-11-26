@@ -8,6 +8,7 @@ contract problems (duplicate IDs, unknown references, cycles) are returned by
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -73,6 +74,32 @@ class VerificationResult:
     outcome: Outcome
     exit_code: int | None = None
     evidence: str | None = None
+    # Digest of the check definition the result was produced for (see check_digest).
+    # None for results written before digests existed or by hand: applicability unknown.
+    check_digest: str | None = None
+
+
+CHECK_DIGEST_LENGTH = 16
+_DIGEST = re.compile(f"[0-9a-f]{{{CHECK_DIGEST_LENGTH}}}")
+
+
+def check_digest(task: Task, check: Check) -> str:
+    """Fingerprint of what a result for ``task``/``check`` was verified against.
+
+    Covers the task ID and the check's ID, description and command text. Editing
+    any of them makes earlier results for that check need re-checking. Titles,
+    requirement links and dependencies are not part of it.
+    """
+
+    import hashlib
+    import json
+
+    payload = json.dumps(
+        [task.task_id, check.check_id, check.description, check.command],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:CHECK_DIGEST_LENGTH]
 
 
 class IssueCode(str, Enum):
@@ -193,7 +220,7 @@ def parse_results(data: Any) -> tuple[VerificationResult, ...]:
     results = []
     for i, raw in enumerate(_list(data["results"], "results")):
         where = f"results[{i}]"
-        raw = _object(raw, where, ("task", "check", "outcome"), ("exit_code", "evidence"))
+        raw = _object(raw, where, ("task", "check", "outcome"), ("exit_code", "evidence", "check_digest"))
         try:
             outcome = Outcome(raw["outcome"])
         except ValueError:
@@ -201,6 +228,9 @@ def parse_results(data: Any) -> tuple[VerificationResult, ...]:
         exit_code = raw.get("exit_code")
         if exit_code is not None and (not isinstance(exit_code, int) or isinstance(exit_code, bool)):
             raise PlanFormatError(f"{where}.exit_code", "정수가 아님")
+        digest = _optional_text(raw.get("check_digest"), f"{where}.check_digest")
+        if digest is not None and not _DIGEST.fullmatch(digest):
+            raise PlanFormatError(f"{where}.check_digest", f"소문자 16진수 {CHECK_DIGEST_LENGTH}자가 아님")
         results.append(
             VerificationResult(
                 _text(raw["task"], f"{where}.task"),
@@ -208,6 +238,7 @@ def parse_results(data: Any) -> tuple[VerificationResult, ...]:
                 outcome,
                 exit_code,
                 _optional_text(raw.get("evidence"), f"{where}.evidence"),
+                digest,
             )
         )
     return tuple(results)

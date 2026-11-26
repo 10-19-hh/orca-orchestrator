@@ -6,7 +6,8 @@ PRD의 요구사항을 검증 가능한 개발 작업으로 나누고, Orca를 �
 
 ## 한눈에 보기
 
-- **Orca 터미널에서 보이는 것:** Orca 터미널 탭에서 `python -m orca_orchestrator`를 실행하면 Runtime 연결·버전, Coordinator 바인딩, 현재 Run, 작업 전송 보류 이유, 사용량(`미확인`)이 한 화면에 나옵니다. `--tasks`로 작업 정의 파일을 지정하면 작업별 `준비`·`대기` 상태와 요구사항 충족 여부도 함께 나옵니다. 화면은 읽기 전용입니다.
+- **Orca 터미널에서 보이는 것:** Orca 터미널 탭에서 `python -m orca_orchestrator`를 실행하면 Runtime 연결·버전, Coordinator 바인딩, 현재 Run, 작업 전송 보류 이유, 사용량(`미확인`)이 한 화면에 나옵니다. `--tasks`로 작업 정의 파일을 지정하면 작업별 상태, 요구사항 충족 여부, 다음 작업, 흐름이 멈춘 이유, 최종 승인 상태도 함께 나옵니다. 화면은 읽기 전용입니다.
+- **로컬 검증 흐름:** `python -m orca_orchestrator.flow`가 작업 계획에서 검증할 작업을 계획 순서대로 골라 단위 테스트를 한 번씩 실행하고 결과를 기록합니다. 실패하면 멈추고, 다시 실행하면 저장된 결과에서 이어갑니다. [처음부터 따라 하기](#로컬-검증-흐름)
 - **Orca 없이 데모 열기:** 저장소 루트의 PowerShell에서 아래 두 줄을 실행합니다. 포함된 응답 픽스처만 재생하므로 Orca가 꺼져 있어도 열리고 실제 CLI는 호출하지 않습니다.
 
 ```powershell
@@ -18,7 +19,7 @@ python -m orca_orchestrator --demo
 
 ```text
 Orca Orchestrator · 읽기 전용 상태 · 데모 (connected)
-조회 시각 2026-11-26 18:41:38 · 실제 CLI를 호출하지 않음
+조회 시각 2026-11-26 20:20:43 · 실제 CLI를 호출하지 않음
 ────────────────────────────────────────────────────────────────────────
 Runtime     연결됨 · Orca 1.4.264 (검증 버전)
 바인딩      Coordinator 터미널 바인딩 있음
@@ -38,11 +39,13 @@ Runtime     연결됨 · Orca 1.4.264 (검증 버전)
   T-1  완료       작업 계약 검증 · FR-01 · 검증 1/1 통과
   T-2  준비       요구사항 추적 표시 · FR-07 · 선행 T-1 완료
 요구사항    FR-01 충족 · FR-07 미충족 (T-2 미완료)
+다음 작업   없음 · T-2: 자동 실행할 수 없는 검증 조건 screen-tests
+최종 승인   대기 · 로컬 검증 완료 1/2 작업 · 사용자 승인은 모든 검증 후
 ────────────────────────────────────────────────────────────────────────
 r 새로고침 · q 종료
 ```
 
-데모 작업 목록은 의존 관계가 있는 두 작업을 보여줍니다. `T-2`는 `T-1`의 검증이 통과해야 `준비`가 됩니다. `r`은 다시 조회, `q`는 화면 종료입니다. 데모 장면과 실제 실행 방법은 [상태 화면](#상태-화면)과 [작업 목록](#작업-목록)에 있습니다.
+데모 작업 목록은 의존 관계가 있는 두 작업을 보여줍니다. `T-2`는 `T-1`의 검증이 통과해야 `준비`가 되며, `T-2`의 `screen-tests`는 자동 실행 대상이 아니어서 다음 작업이 없다고 표시됩니다. 내용이 창보다 길면 `↑`·`↓`로 이동합니다. `r`은 다시 조회, `q`는 화면 종료입니다. 데모 장면과 실제 실행 방법은 [상태 화면](#상태-화면)과 [작업 목록](#작업-목록)에 있습니다.
 
 ## 지금 써볼 수 있는 범위
 
@@ -52,8 +55,9 @@ r 새로고침 · q 종료
 - **읽기 전용 상태 화면**은 Runtime 연결·버전, Coordinator 바인딩, 현재 Run, 작업 전송 보류 이유를 한 화면에 보여줍니다. Orca 상태를 바꾸지 않습니다.
 - **작업 목록**은 직접 정의한 작업에 요구사항 ID, 작업 ID, 선행 작업, 검증 조건을 연결합니다. 중복 ID, 없는 선행 작업, 순환 의존성을 오류로 표시하고, 입력된 검증 결과로 작업 상태와 요구사항 충족 여부를 판정합니다.
 - **로컬 검증**은 사용자가 직접 호출할 때 `unit-tests` 검증 조건으로 저장소 단위 테스트를 한 번 실행하고, 종료 코드로 통과·실패를 결과 파일에 기록합니다.
+- **로컬 검증 흐름**은 다음 작업을 결정적으로 골라 하나씩 검증하고, 실패·미완료·기록 실패에서 멈추며, 저장된 결과에서 이어갑니다. 요구사항 → 작업 → 검증 조건 → 실행 결과를 추적해 보여줍니다.
 - **작업 전송 게이트**는 연결·버전·바인딩·승인·과금 조건과 사용량 대기 상태를 평가합니다. 현재 빌드는 Worker를 시작하거나 작업을 보내지 않습니다.
-- **개발 예정**은 실제 Worker 기동·상태 제어, 사용량 연동, PRD 문서에서 작업 추출, 단위 테스트 외 검증과 보호 파일 검사, 실행 복구, 변경·리뷰 증거 연결과 승인입니다.
+- **개발 예정**은 실제 Worker 기동·상태 제어, 사용량 연동, PRD 문서에서 작업 추출, 단위 테스트 외 검증과 보호 파일 검사, 변경·리뷰 증거 연결, 최종 승인 기록입니다.
 
 ## 로컬 시작
 
@@ -70,7 +74,7 @@ python -c "from orca_orchestrator.orca import OrcaCliAdapter, WorkDispatcher"
 python -m unittest discover -s tests -v
 ```
 
-테스트는 가짜 명령 실행기와 응답 픽스처로 argv 구성, 응답 파싱, 바인딩 누락, 타임아웃 재실행 차단, 전송 차단과 한도 대기, 작업 계약 오류와 선행 작업 검증 결과에 따른 상태 판정, 로컬 검증 실행과 결과 기록, 상태 화면의 상황별 표시를 확인합니다. 실행기 자체 테스트에는 로컬 Python 서브프로세스를 사용합니다. Orca나 모델은 호출하지 않습니다.
+테스트는 가짜 명령 실행기와 응답 픽스처로 argv 구성, 응답 파싱, 바인딩 누락, 타임아웃 재실행 차단, 전송 차단과 한도 대기, 작업 계약 오류와 선행 작업 검증 결과에 따른 상태 판정, 로컬 검증 실행과 결과 기록, 흐름의 작업 선택·중단·재개와 재확인 판정, 상태 화면의 상황별 표시를 확인합니다. 실행기 자체 테스트에는 로컬 Python 서브프로세스를 사용합니다. Orca나 모델은 호출하지 않습니다.
 
 ## 상태 화면
 
@@ -110,7 +114,7 @@ python -m orca_orchestrator --demo --demo-results failed --once
 python -m orca_orchestrator --demo --demo-results none --once
 ```
 
-`--demo-results`는 `passed`(기본), `failed`, `none` 중 하나입니다. `failed`의 작업 목록은 다음과 같습니다.
+`--demo-results`는 `passed`(기본), `failed`, `none` 중 하나입니다. `failed`는 흐름이 `T-1` 검증 실패로 멈춘 장면이며 작업 목록은 다음과 같습니다.
 
 ```text
 작업 목록   2개 · 검증 실패 1 · 대기 1 · 데모 계획 · 선행 작업 검증 실패
@@ -118,6 +122,9 @@ python -m orca_orchestrator --demo --demo-results none --once
   T-2  대기       요구사항 추적 표시 · FR-07 · 선행 T-1
                   대기 사유: 선행 작업 T-1 검증 실패
 요구사항    FR-01 미충족 (T-1 미완료) · FR-07 미충족 (T-2 미완료)
+다음 작업   없음 · T-1: unit-tests 검증 실패 (외 1건)
+흐름        중단 · T-1/unit-tests · 11-26 20:00:05 · 검증 실패 (종료 코드 1) · …
+최종 승인   대기 · 로컬 검증 완료 0/2 작업 · 사용자 승인은 모든 검증 후
 ```
 
 직접 정의한 작업은 `--tasks`로, 기록된 검증 결과는 `--results`로 지정합니다. 화면에는 파일 이름만 표시하고, `r`을 누르면 파일을 다시 읽습니다.
@@ -128,7 +135,9 @@ python -m orca_orchestrator --tasks plan.json --results results.json
 
 파일 형식은 [`demo_task_plan.json`](src/orca_orchestrator/fixtures/demo_task_plan.json)과 [`demo_results_failed.json`](src/orca_orchestrator/fixtures/demo_results_failed.json)을 참고하세요. 작업 정의에는 요구사항(`id`, `title`, `acceptance`)과 작업(`id`, `title`, `requirements`, `depends_on`, `checks`)이 들어갑니다. 검증 결과는 작업·검증 조건별 `passed` 또는 `failed`입니다.
 
-- 작업은 모든 검증 조건이 `passed`일 때만 `완료`입니다. 하나라도 `failed`면 `검증 실패`이며 완료되지 않습니다.
+- 작업은 모든 검증 조건이 현재 계획에 맞는 `passed`일 때만 `완료`입니다. 하나라도 `failed`면 `검증 실패`이며 완료되지 않습니다.
+- 결과에는 검증 당시 검증 조건의 지문(`check_digest`)이 함께 기록됩니다. 그 뒤 계획에서 해당 검증 조건(ID·설명·`command` 문구)이 바뀌었거나 지문이 없는 결과는 적용 여부를 판단할 수 없으므로 `재확인`으로 표시하고 완료로 세지 않습니다.
+- `다음 작업`은 흐름이 고를 작업과 이유, `흐름`은 마지막 흐름 실행이 멈춘 이유, `최종 승인`은 로컬 검증과 별개인 사용자 승인 상태입니다.
 - 직접 선행 작업이 모두 완료되면 `준비`, 아니면 `대기`입니다. `대기`에는 실패하거나 아직 검증되지 않은 선행 작업이 사유로 표시됩니다.
 - 요구사항은 연결된 작업이 모두 완료되면 `충족`입니다. 연결된 작업이 없거나 미완료 작업이 있으면 `미충족`입니다.
 - 중복 ID, 정의되지 않은 요구사항·선행 작업, 순환 의존성, 검증 조건이 없는 작업, 맞지 않는 검증 결과는 오류로 표시하고 상태를 판정하지 않습니다.
@@ -144,7 +153,7 @@ python -m orca_orchestrator.verify --tasks src/orca_orchestrator/fixtures/demo_t
 
 ```text
 실행: T-1/unit-tests → python -m unittest discover -s tests (한 번, 제한 600초)
-검증 통과 · T-1/unit-tests · 종료 코드 0 · Ran 157 tests · OK
+검증 통과 · T-1/unit-tests · 종료 코드 0 · Ran 187 tests · OK
 기록: orca-demo-results.json (다른 결과 0건 보존)
 ```
 
@@ -166,6 +175,102 @@ python -m orca_orchestrator --tasks src/orca_orchestrator/fixtures/demo_task_pla
 - 제한 시간(`--timeout`, 기본 600초)을 넘기거나, 실행 자체가 실패하거나, 실행된 테스트가 0개이면 결과를 기록하지 않고 원인을 알립니다. 자동으로 다시 실행하지 않습니다.
 - 테스트 프로세스에는 Claude·Codex 인증 환경변수와 Orca 터미널 바인딩을 넘기지 않습니다.
 - 종료 코드는 통과 `0`, 실패 `1`, 실행 전 거부 `2`, 시간 초과·실행 불가 `3`입니다.
+
+## 로컬 검증 흐름
+
+작업 계획과 결과 파일을 지정해 한 번 실행하면, 검증할 수 있는 작업을 골라 하나씩 검증하고 결과를 기록한 뒤 다음 작업을 다시 판단합니다. 아래는 저장소 루트의 같은 PowerShell에서 [`examples/flow_plan.json`](examples/flow_plan.json)으로 처음부터 끝까지 확인한 순서입니다. Orca나 모델은 호출하지 않습니다. 시각과 테스트 수는 실행할 때마다 다릅니다.
+
+1. 무엇을 할지 미리 봅니다. 아무것도 실행하거나 기록하지 않습니다.
+
+```powershell
+$env:PYTHONPATH = "src;tests"
+python -m orca_orchestrator.flow --tasks examples/flow_plan.json --results "$env:TEMP\orca-flow-results.json" --dry-run
+```
+
+```text
+다음 작업: T-1 · 선행 작업 없음 · unit-tests 결과 없음
+진행할 수 없는 작업:
+  T-2: 선행 작업 T-1 검증 결과 없음
+  T-3: 선행 작업 T-2 검증 결과 없음
+```
+
+2. 작업 하나만 검증하고 멈춥니다. 중간에 멈춘 상황을 재현하는 단계이며, 종료 코드는 `5`입니다.
+
+```powershell
+python -m orca_orchestrator.flow --tasks examples/flow_plan.json --results "$env:TEMP\orca-flow-results.json" --max-tasks 1
+```
+
+```text
+[1] 선택 T-1 · 선행 작업 없음 · unit-tests 결과 없음
+    실행 T-1/unit-tests → python -m unittest discover -s tests (한 번, 제한 600초)
+    통과 · 종료 코드 0 · Ran 187 tests · OK · 기록 orca-flow-results.json
+흐름 멈춤 · T-2 · 지정한 작업 수(1)만큼 실행 · 다음 작업 T-2
+이번 실행에서 완료한 작업: T-1
+```
+
+3. 같은 명령을 옵션 없이 다시 실행하면 저장된 결과에서 이어갑니다. 이미 통과한 `T-1`은 다시 실행하지 않습니다.
+
+```powershell
+python -m orca_orchestrator.flow --tasks examples/flow_plan.json --results "$env:TEMP\orca-flow-results.json"
+```
+
+```text
+[1] 선택 T-2 · 선행 T-1 완료 · unit-tests 결과 없음
+    실행 T-2/unit-tests → python -m unittest discover -s tests (한 번, 제한 600초)
+    통과 · 종료 코드 0 · Ran 187 tests · OK · 기록 orca-flow-results.json
+[2] 선택 T-3 · 선행 T-2 완료 · unit-tests 결과 없음
+    실행 T-3/unit-tests → python -m unittest discover -s tests (한 번, 제한 600초)
+    통과 · 종료 코드 0 · Ran 187 tests · OK · 기록 orca-flow-results.json
+흐름 끝남 · 모든 작업의 로컬 검증 통과 · 최종 사용자 승인 대기
+이번 실행에서 완료한 작업: T-2, T-3
+```
+
+끝에는 요구사항부터 실행 결과까지의 추적이 나옵니다.
+
+```text
+추적 (요구사항 → 작업 → 검증 조건 → 결과):
+  FR-01 충족 · PRD 입력 및 작업 계약
+    T-1 완료 · 작업 계약과 상태 판정
+      unit-tests 통과 · 종료 코드 0 · python -m unittest discover -s tests · 2026-11-26T11:20:44Z · Ran 187 tests · OK
+  FR-06 충족 · 결정론적 검증
+    T-2 완료 · 로컬 검증 실행과 결과 기록
+      unit-tests 통과 · 종료 코드 0 · python -m unittest discover -s tests · 2026-11-26T11:20:51Z · Ran 187 tests · OK
+  FR-07 충족 · 요구사항 추적
+    T-3 완료 · 요구사항 추적과 흐름 표시
+      unit-tests 통과 · 종료 코드 0 · python -m unittest discover -s tests · 2026-11-26T11:20:57Z · Ran 187 tests · OK
+최종 승인: 대기 · 로컬 검증 결과와 별개로 사용자가 직접 승인합니다 (자동 승인 없음)
+```
+
+4. 상태 화면에서 같은 파일을 읽습니다. Orca가 꺼져 있거나 Orca 터미널이 아니면 Runtime·바인딩 줄과 하단 안내가 달라지지만 작업 영역은 같습니다. 흐름을 실행하는 동안 화면을 열어 두었다면 `r`을 눌러 파일을 다시 읽습니다.
+
+```powershell
+python -m orca_orchestrator --tasks examples/flow_plan.json --results "$env:TEMP\orca-flow-results.json"
+```
+
+```text
+작업 목록   3개 · 완료 3 · flow_plan.json · orca-flow-results.json
+  T-1  완료       작업 계약과 상태 판정 · FR-01 · 검증 1/1 통과
+  T-2  완료       로컬 검증 실행과 결과 기록 · FR-06 · 검증 1/1 통과
+  T-3  완료       요구사항 추적과 흐름 표시 · FR-07 · 검증 1/1 통과
+요구사항    FR-01 충족 · FR-06 충족 · FR-07 충족
+다음 작업   없음 · 모든 작업 로컬 검증 완료
+흐름        끝남 · 11-26 20:21:04 · 모든 작업의 로컬 검증 통과 · 최종 사용자 승…
+최종 승인   대기 · 로컬 검증 모두 통과 · 사용자 최종 승인 필요 (자동 승인 없음)
+```
+
+5. 모두 끝난 뒤 다시 실행하면 아무것도 실행하지 않고 끝납니다.
+
+```text
+흐름 끝남 · 모든 작업의 로컬 검증 통과 · 최종 사용자 승인 대기
+```
+
+- **선택 규칙:** 계획 순서에서 선행 작업이 모두 완료됐고, 자동 실행할 수 있는 검증 조건(`unit-tests`) 중 결과가 없거나 재확인이 필요한 통과 결과가 남은 첫 작업을 고릅니다. 같은 파일이면 항상 같은 작업을 고릅니다.
+- **멈추는 경우:** 검증 실패(`1`), 실행 전 거부(`2`), 시간 초과·실행 불가·실행된 테스트 0개·결과 기록 실패(`3`), 더 고를 작업 없음(`4`), `--max-tasks` 도달(`5`)에서 멈춥니다. 모든 작업이 끝나면 `0`입니다. 멈춘 작업과 이유를 출력하고 `<결과 파일 이름>.flow.json`에도 남겨 상태 화면에 보여줍니다.
+- **재실행하지 않는 것:** 흐름은 실패한 검증을 자동으로 다시 실행하지 않습니다. 원인을 고친 뒤 `python -m orca_orchestrator.verify`로 그 검증을 직접 실행하고, 흐름을 다시 실행해 이어갑니다. 작업 정의의 `command` 문자열은 실행하지 않습니다.
+- **재확인:** 계획의 검증 조건이 바뀌어 `재확인`이 된 통과 결과는 흐름이 다시 검증합니다. 재확인이 필요한 실패 결과와 자동 실행할 수 없는 검증 조건은 대기 이유로 표시합니다.
+- **파일:** 검증 결과는 기존 `--results` 형식으로 저장하며 다른 작업의 결과를 보존합니다. 저장할 때만 `<결과 파일>.lock`으로 잠급니다.
+- **최종 승인:** 모든 로컬 검증이 통과해도 최종 승인은 `대기`입니다. 프로그램이 승인을 대신하지 않습니다.
+- 흐름이 검증 실패로 멈춘 장면은 `python -m orca_orchestrator --demo --demo-results failed`로 볼 수 있습니다.
 
 ## 구독과 과금
 

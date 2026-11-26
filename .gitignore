@@ -14,3 +14,7 @@ venv/
 # Local environment
 .env
 .env.*
+
+# Local verification byproducts next to a results file
+*.json.lock
+*.flow.json

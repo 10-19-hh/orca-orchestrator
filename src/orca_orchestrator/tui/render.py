@@ -6,7 +6,11 @@ import unicodedata
 from dataclasses import dataclass
 
 from ..orca.dispatch import Provider, Reason
-from ..tasks import BoardState, IssueCode, TaskBoard, TaskState, WaitKind
+from datetime import datetime, timezone
+
+from ..tasks import BoardState, IssueCode, TaskBoard, TaskState
+from ..tasks.flow import STALE_TEXT, StopKind
+from ..tasks.flow import wait_reason_text as _flow_wait_reason_text
 from . import snapshot as s
 
 UNKNOWN = "미확인"
@@ -52,6 +56,7 @@ MAX_ISSUE_LINES = 4
 TASK_STATE_LABELS: dict[TaskState, str] = {
     TaskState.VERIFIED: "완료",
     TaskState.FAILED: "검증 실패",
+    TaskState.RECHECK: "재확인",
     TaskState.READY: "준비",
     TaskState.WAITING: "대기",
 }
@@ -182,11 +187,7 @@ def issue_text(issue) -> str:
 
 
 def wait_reason_text(reason) -> str:
-    if reason.kind is WaitKind.PREREQUISITE_FAILED:
-        return f"선행 작업 {reason.task_id} 검증 실패"
-    if reason.passed == 0:
-        return f"선행 작업 {reason.task_id} 검증 결과 없음"
-    return f"선행 작업 {reason.task_id} 검증 미완료 ({reason.passed}/{reason.total} 통과)"
+    return _flow_wait_reason_text(reason)
 
 
 def _task_detail(tp) -> str:
@@ -195,10 +196,70 @@ def _task_detail(tp) -> str:
         return f"검증 {tp.passed}/{tp.total} 통과"
     if tp.state is TaskState.FAILED:
         return f"검증 실패: {', '.join(tp.failed_checks)}"
-    if tp.state is TaskState.READY:
+    if tp.state in (TaskState.READY, TaskState.RECHECK):
         text = f"선행 {deps} 완료" if deps else "선행 작업 없음"
+        if tp.state is TaskState.RECHECK:
+            stale = ", ".join(f"{c.check.check_id} ({STALE_TEXT[c.stale_reason]})" for c in tp.stale_checks)
+            return text + f" · 재확인 필요: {stale}"
         return text + (f" · 검증 {tp.passed}/{tp.total} 통과" if tp.passed else "")
     return f"선행 {deps}"
+
+
+STOP_LABELS = {
+    StopKind.DONE: "끝남",
+    StopKind.WAITING: "멈춤",
+    StopKind.LIMIT: "멈춤",
+    StopKind.FAILED: "중단",
+    StopKind.NOT_COMPLETED: "중단",
+    StopKind.NOT_RECORDED: "중단",
+    StopKind.REFUSED: "중단",
+}
+
+
+def local_time(iso: str) -> str:
+    try:
+        moment = datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return iso
+    return moment.astimezone().strftime("%m-%d %H:%M:%S")
+
+
+def next_text(board: TaskBoard) -> str:
+    view = board.view
+    if view.next is not None:
+        return f"{view.next.task_id} · {view.next.reason}"
+    if view.all_verified:
+        return "없음 · 모든 작업 로컬 검증 완료"
+    if not view.blockers:
+        return "없음"
+    first = view.blockers[0]
+    more = f" (외 {len(view.blockers) - 1}건)" if len(view.blockers) > 1 else ""
+    return f"없음 · {first.task_id}: {first.reason}{more}"
+
+
+def flow_text(board: TaskBoard) -> str | None:
+    if board.flow_error:
+        return f"{UNREADABLE} · {board.flow_error}"
+    status = board.flow
+    if status is None:
+        return None
+    if status.state == "running" and status.current is not None:
+        task, check, started = status.current
+        return f"실행 중 · {task}/{check} · 시작 {local_time(started)}"
+    last = status.last
+    if last is None:
+        return f"기록 없음 · {local_time(status.updated_at)}"
+    target = f"{last.task_id}/{last.check_id}" if last.task_id and last.check_id else last.task_id
+    parts = [STOP_LABELS[last.kind], *([target] if target else []), local_time(last.at), last.message]
+    return " · ".join(parts)
+
+
+def approval_text(board: TaskBoard) -> str:
+    progress = board.progress
+    if progress.all_verified:
+        return "대기 · 로컬 검증 모두 통과 · 사용자 최종 승인 필요 (자동 승인 없음)"
+    done = progress.count(TaskState.VERIFIED)
+    return f"대기 · 로컬 검증 완료 {done}/{len(progress.tasks)} 작업 · 사용자 승인은 모든 검증 후"
 
 
 def task_lines(board: TaskBoard) -> list[str]:
@@ -237,6 +298,12 @@ def task_lines(board: TaskBoard) -> list[str]:
         else:
             reqs.append(f"{rid} 미충족 ({', '.join(rp.open_task_ids)} 미완료)")
     lines.append(_row("요구사항", " · ".join(reqs) if reqs else "정의 없음"))
+    if board.view is not None:
+        lines.append(_row("다음 작업", next_text(board)))
+    flow = flow_text(board)
+    if flow:
+        lines.append(_row("흐름", flow))
+    lines.append(_row("최종 승인", approval_text(board)))
     return lines
 
 

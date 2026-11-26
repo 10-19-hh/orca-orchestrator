@@ -37,6 +37,7 @@ from .contract import (
     PlanIssue,
     TaskPlan,
     VerificationResult,
+    check_digest,
     parse_plan,
     parse_results,
     validate,
@@ -151,6 +152,8 @@ def results_document(results: tuple[VerificationResult, ...]) -> dict:
             entry["exit_code"] = r.exit_code
         if r.evidence is not None:
             entry["evidence"] = r.evidence
+        if r.check_digest is not None:
+            entry["check_digest"] = r.check_digest
         entries.append(entry)
     return {"schema": RESULTS_SCHEMA, "results": entries}
 
@@ -242,6 +245,12 @@ def results_lock(results_path: Path, timeout: float = DEFAULT_LOCK_TIMEOUT_SECON
         os.close(fd)
 
 
+def current_digest(plan: TaskPlan, result: VerificationResult) -> str | None:
+    task = next((t for t in plan.tasks if t.task_id == result.task_id), None)
+    check = next((c for c in task.checks if c.check_id == result.check_id), None) if task else None
+    return check_digest(task, check) if check else None
+
+
 def merge_results(
     existing: tuple[VerificationResult, ...], new: VerificationResult
 ) -> tuple[tuple[VerificationResult, ...], bool]:
@@ -287,6 +296,10 @@ def save_result(
             issues = validate(plan, merged)
             if issues:
                 raise VerificationNotRecorded(f"최신 작업 정의와 결과가 맞지 않음 ({plan_path.name})", result, issues)
+            if result.check_digest is not None and result.check_digest != current_digest(plan, result):
+                raise VerificationNotRecorded(
+                    f"검증하는 동안 작업 정의의 검증 조건이 바뀜 ({plan_path.name})", result
+                )
             try:
                 write_results(results_path, merged)
             except OSError as exc:
@@ -344,7 +357,8 @@ def prepare(plan_path: Path, results_path: Path, task_id: str, check_id: str, re
     task = next((t for t in plan.tasks if t.task_id == task_id), None)
     if task is None:
         raise VerificationSetupError(f"작업 {task_id}이(가) 작업 정의에 없음")
-    if check_id not in {c.check_id for c in task.checks}:
+    check = next((c for c in task.checks if c.check_id == check_id), None)
+    if check is None:
         raise VerificationSetupError(f"작업 {task_id}에 검증 조건 {check_id}이(가) 없음")
     command = SUPPORTED_CHECKS.get(check_id)
     if command is None:
@@ -358,7 +372,7 @@ def prepare(plan_path: Path, results_path: Path, task_id: str, check_id: str, re
         raise VerificationSetupError(f"기존 검증 결과에 오류가 있어 덮어쓰지 않음 ({results_path.name})", issues)
     if not (repo / "tests").is_dir():
         raise VerificationSetupError("저장소 루트에 tests 폴더가 없음 (--repo 확인)")
-    return plan, command
+    return plan, command, check_digest(task, check)
 
 
 def verify(
@@ -376,7 +390,7 @@ def verify(
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
 ) -> VerificationRun:
     plan_path, results_path, repo = Path(plan_path), Path(results_path), Path(repo).resolve()
-    _, command = prepare(plan_path, results_path, task_id, check_id, repo)
+    _, command, digest = prepare(plan_path, results_path, task_id, check_id, repo)
 
     python = python if python is not None else sys.executable
     if not python:
@@ -399,7 +413,7 @@ def verify(
     outcome = Outcome.PASSED if output.exit_code == 0 else Outcome.FAILED
     stamp = started.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = VerificationResult(
-        task_id, check_id, outcome, output.exit_code, f"{command.display} · {stamp} · {summary.text}"
+        task_id, check_id, outcome, output.exit_code, f"{command.display} · {stamp} · {summary.text}", digest
     )
     kept, replaced = save_result(plan_path, results_path, result, lock_timeout=lock_timeout)
     return VerificationRun(result, command, output, summary.text, kept, replaced)

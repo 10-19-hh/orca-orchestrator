@@ -1,0 +1,14 @@
+{
+  "schema": "orca-orchestrator/flow-status@1",
+  "state": "stopped",
+  "updated_at": "2026-11-26T11:00:05Z",
+  "current": null,
+  "last": {
+    "kind": "failed",
+    "message": "검증 실패 (종료 코드 1) · Ran 2 tests · FAILED (failures=1)",
+    "at": "2026-11-26T11:00:05Z",
+    "task": "T-1",
+    "check": "unit-tests"
+  },
+  "verified": []
+}

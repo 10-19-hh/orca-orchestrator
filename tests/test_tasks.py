@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from orca_orchestrator.tasks.contract import check_digest
 from orca_orchestrator.tasks import (
     PLAN_SCHEMA,
     RESULTS_SCHEMA,
@@ -61,6 +62,19 @@ def results_data(*entries):
             for t, c, o, e in entries
         ],
     }
+
+
+def stamped(plan, results):
+    """Adds the current check digest to each result, as verify would record it."""
+
+    parsed = parse_plan(plan)
+    digests = {(tk.task_id, c.check_id): check_digest(tk, c) for tk in parsed.tasks for c in tk.checks}
+    out = copy.deepcopy(results)
+    for entry in out["results"]:
+        key = (entry["task"], entry["check"])
+        if key in digests:
+            entry["check_digest"] = digests[key]
+    return out
 
 
 def codes(issues):
@@ -198,7 +212,7 @@ class ContractTest(unittest.TestCase):
 class ProgressTest(unittest.TestCase):
     def judge(self, data, *entries):
         plan = parse_plan(data)
-        results = parse_results(results_data(*entries))
+        results = parse_results(stamped(data, results_data(*entries)))
         self.assertEqual(validate(plan, results), ())
         return evaluate(plan, results)
 
@@ -289,10 +303,12 @@ class SourceTest(unittest.TestCase):
             plan_path = Path(tmp) / "plan.json"
             results_path = Path(tmp) / "results.json"
             plan_path.write_text(json.dumps(plan_data()), encoding="utf-8")
-            results_path.write_text(json.dumps(results_data(("T-1", "unit", "failed", 1))), encoding="utf-8")
+            results_path.write_text(json.dumps(stamped(plan_data(), results_data(("T-1", "unit", "failed", 1)))),
+                                    encoding="utf-8")
             source = FileTaskSource(plan_path, results_path)
             self.assertEqual(source.load().progress.task("T-2").state, TaskState.WAITING)
-            results_path.write_text(json.dumps(results_data(("T-1", "unit", "passed", 0))), encoding="utf-8")
+            results_path.write_text(json.dumps(stamped(plan_data(), results_data(("T-1", "unit", "passed", 0)))),
+                                    encoding="utf-8")
             board = source.load()
             self.assertEqual(board.progress.task("T-2").state, TaskState.READY)
             self.assertEqual(board.label, "plan.json · results.json")
@@ -301,6 +317,47 @@ class SourceTest(unittest.TestCase):
             missing = FileTaskSource(Path(tmp) / "nope.json").load()
             self.assertEqual(missing.state, BoardState.UNREADABLE)
             self.assertNotIn(tmp, missing.error)
+
+
+class DigestTest(unittest.TestCase):
+    def test_digest_tracks_check_definition_only(self):
+        base = parse_plan(plan_data())
+        t1 = base.tasks[0]
+        digest = check_digest(t1, t1.checks[0])
+        self.assertRegex(digest, r"^[0-9a-f]{16}$")
+        same = copy.deepcopy(plan_data())
+        same["tasks"][0]["title"] = "renamed"
+        same["tasks"][0]["requirements"] = ["FR-07"]
+        t = parse_plan(same).tasks[0]
+        self.assertEqual(check_digest(t, t.checks[0]), digest)
+        for field, value in (("description", "other"), ("command", "python -m unittest -v")):
+            with self.subTest(field):
+                changed = copy.deepcopy(plan_data())
+                changed["tasks"][0]["checks"][0][field] = value
+                t = parse_plan(changed).tasks[0]
+                self.assertNotEqual(check_digest(t, t.checks[0]), digest)
+
+    def test_digest_field_is_optional_and_checked(self):
+        ok = results_data(("T-1", "unit", "passed", 0))
+        self.assertIsNone(parse_results(ok)[0].check_digest)
+        for bad in ("ABCDEF0123456789", "123", 5):
+            with self.subTest(bad=bad):
+                data = copy.deepcopy(ok)
+                data["results"][0]["check_digest"] = bad
+                with self.assertRaises(PlanFormatError):
+                    parse_results(data)
+
+    def test_stale_results_need_recheck(self):
+        plan = parse_plan(plan_data())
+        unstamped = parse_results(results_data(("T-1", "unit", "passed", 0)))
+        progress = evaluate(plan, unstamped)
+        self.assertEqual(progress.task("T-1").state, TaskState.RECHECK)
+        self.assertEqual(progress.task("T-2").waiting_on[0].kind, WaitKind.PREREQUISITE_RECHECK)
+        wrong = copy.deepcopy(stamped(plan_data(), results_data(("T-1", "unit", "failed", 1))))
+        wrong["results"][0]["check_digest"] = "0" * 16
+        progress = evaluate(plan, parse_results(wrong))
+        self.assertEqual(progress.task("T-1").state, TaskState.RECHECK)  # a stale failure is not current either
+        self.assertEqual(progress.task("T-1").stale_checks[0].stale_reason.value, "changed")
 
 
 if __name__ == "__main__":

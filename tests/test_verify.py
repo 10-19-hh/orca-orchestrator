@@ -176,7 +176,10 @@ class PreserveTest(unittest.TestCase):
         self.assertIsNone(stored[2].exit_code)
         self.assertEqual((run.kept, run.replaced), (2, True))
         progress = FileTaskSource(ws.plan, ws.results).load().progress
-        self.assertEqual(progress.task("T-2").state, TaskState.FAILED)
+        # The preserved T-2 entries were written without a check digest: kept, but needing re-checking.
+        self.assertEqual(progress.task("T-1").state, TaskState.VERIFIED)
+        self.assertEqual(progress.task("T-2").state, TaskState.RECHECK)
+        self.assertEqual([c.stale_reason.value for c in progress.task("T-2").stale_checks], ["no_digest", "no_digest"])
 
     def test_second_task_does_not_touch_first(self):
         ws = Workspace(self)

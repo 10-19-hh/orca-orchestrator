@@ -373,7 +373,7 @@ class TaskScreenTest(unittest.TestCase):
                     self.assertTrue(all(c[1:] in ALLOWED_TAILS for c in runner.calls))
                     self.assertTrue(all(r.display_width(line) <= 80 for line in lines))
                     if scenario == "connected":
-                        self.assertLessEqual(len(lines), 24)
+                        self.assertLessEqual(len(lines), 28)
                         self.assertFalse(any(line.startswith("안내:") for line in lines))
 
     def test_invalid_plan_lists_issues_and_judges_nothing(self):
@@ -530,15 +530,29 @@ class LayoutTest(unittest.TestCase):
         self.assertTrue(frame.lines[-1].startswith("r 새로고침 · q 종료"), frame.lines[-1])
         self.assertTrue(all(r.display_width(line) <= width for line in frame.lines))
 
-    def test_80x24_demo_fits_without_scrolling(self):
+    def test_tall_terminal_shows_demo_without_scrolling(self):
         for variant in DEMO_RESULTS:
             with self.subTest(variant):
                 snap = demo_snapshot(variant)
-                frame = r.layout(snap, 79, 24)
-                self.assert_frame(frame, 24)
+                frame = r.layout(snap, 79, 30)
+                self.assert_frame(frame, 30)
                 self.assertEqual(frame.lines, r.render(snap, 79))
                 self.assertEqual((frame.offset, frame.max_offset), (0, 0))
                 self.assertEqual(frame.lines[-1], r.FOOTER)
+
+    def test_80x24_demo_scrolls_to_task_flow_lines(self):
+        for variant in DEMO_RESULTS:
+            with self.subTest(variant):
+                snap = demo_snapshot(variant)
+                _, body = r.render_parts(snap, 79)
+                top = r.layout(snap, 79, 24)
+                self.assert_frame(top, 24)
+                self.assertEqual(len(top.lines), 24)
+                bottom = r.layout(snap, 79, 24, offset=10_000)
+                self.assert_frame(bottom, 24)
+                self.assertEqual(bottom.lines[-2], body[-1])  # the bottom rule is reachable
+                self.assertTrue(any(line.startswith("최종 승인") for line in bottom.lines))
+                self.assertTrue(any(line.startswith("다음 작업") for line in bottom.lines))
 
     def test_80x24_long_tasks_and_reasons_scroll(self):
         snap = long_snapshot()
@@ -637,7 +651,7 @@ class ScrollLoopTest(unittest.TestCase):
         self.assertTrue(all(r.display_width(line) <= 59 for line in frames[2]))
 
     def test_short_content_unchanged(self):
-        code, _, _, frames = self.drive([app.DOWN, "q"], lambda: (80, 24), lambda: demo_snapshot("passed"))
+        code, _, _, frames = self.drive([app.DOWN, "q"], lambda: (80, 30), lambda: demo_snapshot("passed"))
         self.assertEqual(frames[0], r.render(demo_snapshot("passed"), 79))
         self.assertEqual(frames[0], frames[1])  # nothing to scroll
 
@@ -683,6 +697,26 @@ class OnceOutputTest(unittest.TestCase):
                 self.assertEqual(lines[-2], r.HINT_RUNTIME_DOWN)
                 self.assertTrue(any(line.startswith("  T-12") for line in lines))
                 self.assertFalse(any("↑↓ 이동" in line for line in lines))
+
+
+class NarrowTaskFlowScreenTest(unittest.TestCase):
+    def test_flow_lines_in_a_narrow_low_tab(self):
+        snap = demo_snapshot("failed")
+        _, body = r.render_parts(snap, 49)
+        self.assertTrue(any(line.startswith("흐름") for line in body))
+        offset, seen = 0, []
+        while True:
+            frame = r.layout(snap, 49, 10, offset)
+            self.assertEqual(len(frame.lines), 10)
+            self.assertTrue(frame.lines[0].startswith("Orca Orchestrator"))
+            self.assertTrue(frame.lines[-1].startswith("r 새로고침"))
+            self.assertTrue(all(r.display_width(line) <= 49 for line in frame.lines))
+            seen.extend(frame.lines[3:-1])
+            if frame.offset == frame.max_offset:
+                break
+            offset = frame.offset + 1
+        for label in ("다음 작업", "흐름", "최종 승인"):
+            self.assertTrue(any(line.startswith(label) for line in seen), label)
 
 
 if __name__ == "__main__":

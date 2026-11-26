@@ -1,7 +1,7 @@
-"""Reads a task plan and verification results into a displayable board.
+"""Reads a task plan, verification results and flow status into a displayable board.
 
 Sources only read files. A board is rebuilt on every refresh, so edits to the
-files show up after pressing ``r``.
+files (including what a running flow writes) show up after pressing ``r``.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .contract import PlanFormatError, PlanIssue, parse_plan, parse_results, validate
+from .flow import FlowStatus, FlowStatusError, FlowView, flow_status_path, parse_flow_status, select
 from .progress import PlanProgress, evaluate
 
 
@@ -31,6 +32,9 @@ class TaskBoard:
     progress: PlanProgress | None = None
     issues: tuple[PlanIssue, ...] = ()
     error: str | None = None
+    view: FlowView | None = None  # next task and blockers, when OK
+    flow: FlowStatus | None = None  # what the last flow run recorded, if any
+    flow_error: str | None = None  # the flow status file exists but cannot be read
 
 
 NOT_CONFIGURED = TaskBoard(BoardState.NOT_CONFIGURED)
@@ -47,8 +51,18 @@ def _json(text: str, name: str) -> object:
         raise PlanFormatError(name, f"JSON 형식 오류 ({exc.lineno}행)") from None
 
 
+def _flow(flow_text: str | None, flow_name: str) -> tuple[FlowStatus | None, str | None]:
+    if flow_text is None:
+        return None, None
+    try:
+        return parse_flow_status(json.loads(flow_text)), None
+    except (json.JSONDecodeError, FlowStatusError) as exc:
+        return None, f"{flow_name}: {exc}" if isinstance(exc, FlowStatusError) else f"{flow_name}: JSON 형식 오류"
+
+
 def build_board(plan_text: str, results_text: str | None, label: str, *,
-                plan_name: str = "작업 정의", results_name: str = "검증 결과") -> TaskBoard:
+                plan_name: str = "작업 정의", results_name: str = "검증 결과",
+                flow_text: str | None = None, flow_name: str = "흐름 상태") -> TaskBoard:
     try:
         plan = parse_plan(_json(plan_text, plan_name))
         results = parse_results(_json(results_text, results_name)) if results_text is not None else ()
@@ -57,7 +71,10 @@ def build_board(plan_text: str, results_text: str | None, label: str, *,
     issues = validate(plan, results)
     if issues:
         return TaskBoard(BoardState.INVALID, label, issues=issues)
-    return TaskBoard(BoardState.OK, label, progress=evaluate(plan, results))
+    progress = evaluate(plan, results)
+    flow, flow_error = _flow(flow_text, flow_name)
+    return TaskBoard(BoardState.OK, label, progress=progress, view=select(plan, progress),
+                     flow=flow, flow_error=flow_error)
 
 
 class FileTaskSource:
@@ -84,21 +101,32 @@ class FileTaskSource:
             results_text = self._read(self.results_path) if self.results_path else None
         except PlanFormatError as exc:
             return TaskBoard(BoardState.UNREADABLE, self.label, error=str(exc))
+        flow_text, flow_name = None, "흐름 상태"
+        if self.results_path is not None:
+            flow_path = flow_status_path(self.results_path)
+            flow_name = flow_path.name
+            if flow_path.exists():
+                try:
+                    flow_text = flow_path.read_text(encoding="utf-8")
+                except (OSError, UnicodeDecodeError):
+                    flow_text = "\0"  # reported as unreadable below
         return build_board(
             plan_text,
             results_text,
             self.label,
             plan_name=self.plan_path.name,
             results_name=self.results_path.name if self.results_path else "검증 결과",
+            flow_text=flow_text,
+            flow_name=flow_name,
         )
 
 
 DEMO_PLAN = "demo_task_plan.json"
-# variant -> (results fixture or None, label)
-DEMO_RESULTS: dict[str, tuple[str | None, str]] = {
-    "passed": ("demo_results_passed.json", "데모 계획 · 선행 작업 검증 통과"),
-    "failed": ("demo_results_failed.json", "데모 계획 · 선행 작업 검증 실패"),
-    "none": (None, "데모 계획 · 검증 결과 없음"),
+# variant -> (results fixture or None, flow status fixture or None, label)
+DEMO_RESULTS: dict[str, tuple[str | None, str | None, str]] = {
+    "passed": ("demo_results_passed.json", None, "데모 계획 · 선행 작업 검증 통과"),
+    "failed": ("demo_results_failed.json", "demo_flow_failed.json", "데모 계획 · 선행 작업 검증 실패"),
+    "none": (None, None, "데모 계획 · 검증 결과 없음"),
 }
 
 
@@ -115,7 +143,9 @@ class DemoTaskSource:
         self.variant = variant
 
     def load(self) -> TaskBoard:
-        results_name, label = DEMO_RESULTS[self.variant]
+        results_name, flow_name, label = DEMO_RESULTS[self.variant]
         results_text = _fixture_text(results_name) if results_name else None
+        flow_text = _fixture_text(flow_name) if flow_name else None
         return build_board(_fixture_text(DEMO_PLAN), results_text, label,
-                           plan_name=DEMO_PLAN, results_name=results_name or "검증 결과")
+                           plan_name=DEMO_PLAN, results_name=results_name or "검증 결과",
+                           flow_text=flow_text, flow_name=flow_name or "흐름 상태")
