@@ -1,0 +1,145 @@
+{
+  "description": "Orca CLI 1.4.264 responses recorded on a Windows host in Step 0 Experiment 1 and in a later read-only status-screen check (run_current_no_run). Structure, exit codes, error codes and messages are as recorded. Run ID, objective text and the user profile path are replaced with example values. stdout is stored as the parsed JSON object (json_response).",
+  "cli_version": "1.4.264",
+  "cases": {
+    "status_ready": {
+      "argv_tail": [
+        "status",
+        "--json"
+      ],
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "targetKind": "local",
+          "app": {
+            "running": true,
+            "desktopWindowStatus": "available"
+          },
+          "runtime": {
+            "state": "ready",
+            "reachable": true,
+            "connectionState": "connected",
+            "appVersion": "1.4.264"
+          },
+          "graph": {
+            "state": "ready"
+          }
+        }
+      },
+      "stderr": ""
+    },
+    "status_not_running": {
+      "argv_tail": [
+        "status",
+        "--json"
+      ],
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "app": {
+            "running": false,
+            "pid": null
+          },
+          "runtime": {
+            "state": "not_running",
+            "reachable": false,
+            "runtimeId": null
+          },
+          "graph": {
+            "ready": null,
+            "state": "not_running"
+          },
+          "targetKind": "local"
+        }
+      },
+      "stderr": ""
+    },
+    "run_create_coordinator": {
+      "argv_tail": [
+        "orchestration",
+        "run-create",
+        "--objective",
+        "Example objective",
+        "--json"
+      ],
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "runId": "run_0123456789ab",
+          "objective": "Example objective"
+        }
+      },
+      "stderr": ""
+    },
+    "run_current_coordinator": {
+      "argv_tail": [
+        "orchestration",
+        "run-current",
+        "--json"
+      ],
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "runId": "run_0123456789ab",
+          "objective": "Example objective"
+        }
+      },
+      "stderr": ""
+    },
+    "run_create_external_unbound": {
+      "argv_tail": [
+        "orchestration",
+        "run-create",
+        "--objective",
+        "Example objective",
+        "--json"
+      ],
+      "exit_code": 1,
+      "json_response": {
+        "ok": false,
+        "error": {
+          "code": "no_active_sender_terminal",
+          "message": "Could not determine the calling terminal for this orchestration command. Pass --from with your own terminal's handle — another pane's handle would act on its mailbox — or run the command inside a live Orca terminal with ORCA_TERMINAL_HANDLE set."
+        }
+      },
+      "stderr": "error: no_active_sender_terminal: Could not determine the calling terminal for this orchestration command. Pass --from with your own terminal's handle — another pane's handle would act on its mailbox — or run the command inside a live Orca terminal with ORCA_TERMINAL_HANDLE set.\n"
+    },
+    "run_create_runtime_unavailable": {
+      "argv_tail": [
+        "orchestration",
+        "run-create",
+        "--objective",
+        "Example objective",
+        "--json"
+      ],
+      "exit_code": 1,
+      "json_response": {
+        "ok": false,
+        "error": {
+          "code": "runtime_unavailable",
+          "message": "Could not read Orca runtime metadata at C:\\Users\\example\\AppData\\Roaming\\orca\\orca-runtime.json. Start the Orca app first."
+        }
+      },
+      "stderr": "error: runtime_unavailable: Could not read Orca runtime metadata at C:\\Users\\example\\AppData\\Roaming\\orca\\orca-runtime.json. Start the Orca app first.\n"
+    },
+    "run_current_no_run": {
+      "argv_tail": [
+        "orchestration",
+        "run-current",
+        "--json"
+      ],
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "runId": null
+        }
+      },
+      "stderr": ""
+    }
+  }
+}

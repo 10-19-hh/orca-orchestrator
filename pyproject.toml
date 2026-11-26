@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orca-orchestrator"
+version = "0.0.1"
+description = "PRD-driven agent orchestrator control plane using Orca as the execution plane"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+orca_orchestrator = ["fixtures/*.json"]

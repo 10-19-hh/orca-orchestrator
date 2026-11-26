@@ -1,0 +1,16 @@
+# Step 0 experiment records, raw evidence and the internal fixture check.
+# Kept locally by the maintainer; not published.
+investigations/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Local environment
+.env
+.env.*
