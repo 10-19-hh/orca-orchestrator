@@ -1,0 +1,6 @@
+{
+  "schema": "orca-orchestrator/verification-results@1",
+  "results": [
+    {"task": "T-1", "check": "unit-tests", "outcome": "failed", "exit_code": 1}
+  ]
+}

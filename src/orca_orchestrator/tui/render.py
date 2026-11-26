@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import unicodedata
+from dataclasses import dataclass
 
 from ..orca.dispatch import Provider, Reason
+from ..tasks import BoardState, IssueCode, TaskBoard, TaskState, WaitKind
 from . import snapshot as s
 
 UNKNOWN = "미확인"
@@ -43,6 +45,32 @@ HINT_UNREADABLE = "안내: 응답을 해석할 수 없습니다. Orca 버전과 
 HINT_TIMED_OUT = "안내: Orca CLI가 제한 시간 안에 응답하지 않았습니다. r로 다시 조회하세요."
 
 FOOTER = "r 새로고침 · q 종료"
+
+TASKS_NOT_CONFIGURED = "지정 안 함 (--tasks로 작업 정의 파일 지정)"
+MAX_ISSUE_LINES = 4
+
+TASK_STATE_LABELS: dict[TaskState, str] = {
+    TaskState.VERIFIED: "완료",
+    TaskState.FAILED: "검증 실패",
+    TaskState.READY: "준비",
+    TaskState.WAITING: "대기",
+}
+STATE_COLUMN = max(len(label) * 2 for label in TASK_STATE_LABELS.values()) + 1  # Hangul is 2 wide
+
+ISSUE_LABELS: dict[IssueCode, str] = {
+    IssueCode.DUPLICATE_REQUIREMENT_ID: "중복 요구사항 ID: {0}",
+    IssueCode.DUPLICATE_TASK_ID: "중복 작업 ID: {0}",
+    IssueCode.DUPLICATE_CHECK_ID: "{0}의 중복 검증 조건 ID: {1}",
+    IssueCode.TASK_WITHOUT_REQUIREMENT: "{0}에 연결된 요구사항 없음",
+    IssueCode.UNKNOWN_REQUIREMENT: "{0}의 요구사항 {1}이(가) 정의되지 않음",
+    IssueCode.TASK_WITHOUT_CHECKS: "{0}에 검증 조건 없음",
+    IssueCode.UNKNOWN_DEPENDENCY: "{0}의 선행 작업 {1}이(가) 정의되지 않음",
+    IssueCode.DEPENDENCY_CYCLE: "순환 의존성: {cycle}",
+    IssueCode.RESULT_UNKNOWN_TASK: "검증 결과의 작업 {0}이(가) 정의되지 않음",
+    IssueCode.RESULT_UNKNOWN_CHECK: "검증 결과의 조건 {0}/{1}이(가) 정의되지 않음",
+    IssueCode.DUPLICATE_RESULT: "{0}/{1} 검증 결과가 중복됨",
+    IssueCode.RESULT_EXIT_CODE_MISMATCH: "{0}/{1}: 통과로 기록됐지만 종료 코드 {2}",
+}
 
 
 def display_width(text: str) -> int:
@@ -149,26 +177,151 @@ def dispatch_lines(snap: s.Snapshot) -> list[str]:
     return lines
 
 
-def render(snap: s.Snapshot, width: int = 80) -> list[str]:
+def issue_text(issue) -> str:
+    return ISSUE_LABELS[issue.code].format(*issue.subject, cycle=" → ".join(issue.subject))
+
+
+def wait_reason_text(reason) -> str:
+    if reason.kind is WaitKind.PREREQUISITE_FAILED:
+        return f"선행 작업 {reason.task_id} 검증 실패"
+    if reason.passed == 0:
+        return f"선행 작업 {reason.task_id} 검증 결과 없음"
+    return f"선행 작업 {reason.task_id} 검증 미완료 ({reason.passed}/{reason.total} 통과)"
+
+
+def _task_detail(tp) -> str:
+    deps = ", ".join(tp.task.dependencies)
+    if tp.state is TaskState.VERIFIED:
+        return f"검증 {tp.passed}/{tp.total} 통과"
+    if tp.state is TaskState.FAILED:
+        return f"검증 실패: {', '.join(tp.failed_checks)}"
+    if tp.state is TaskState.READY:
+        text = f"선행 {deps} 완료" if deps else "선행 작업 없음"
+        return text + (f" · 검증 {tp.passed}/{tp.total} 통과" if tp.passed else "")
+    return f"선행 {deps}"
+
+
+def task_lines(board: TaskBoard) -> list[str]:
+    if board.state is BoardState.NOT_CONFIGURED:
+        return [_row("작업 목록", TASKS_NOT_CONFIGURED)]
+    if board.state is BoardState.UNREADABLE:
+        return [_row("작업 목록", f"{UNREADABLE} · {board.error}"), f"  출처 {board.label}"]
+    if board.state is BoardState.INVALID:
+        lines = [_row("작업 목록", f"오류 {len(board.issues)}건 · 상태를 판정하지 않음"),
+                 f"  출처 {board.label}"]
+        shown = board.issues[:MAX_ISSUE_LINES]
+        lines += [f"  · {issue_text(issue)}" for issue in shown]
+        if len(board.issues) > len(shown):
+            lines.append(f"  · … 외 {len(board.issues) - len(shown)}건")
+        return lines
+
+    progress = board.progress
+    counts = [f"{TASK_STATE_LABELS[st]} {progress.count(st)}" for st in TaskState if progress.count(st)]
+    lines = [_row("작업 목록", " · ".join([f"{len(progress.tasks)}개", *counts, board.label]))]
+    id_width = max((display_width(tp.task.task_id) for tp in progress.tasks), default=0)
+    for tp in progress.tasks:
+        task_id = tp.task.task_id + " " * (id_width - display_width(tp.task.task_id))
+        state = TASK_STATE_LABELS[tp.state]
+        state += " " * (STATE_COLUMN - display_width(state))
+        reqs = ", ".join(tp.task.requirement_ids)
+        lines.append(f"  {task_id}  {state}{tp.task.title} · {reqs} · {_task_detail(tp)}")
+        for reason in tp.waiting_on:
+            lines.append(" " * (4 + id_width + STATE_COLUMN) + f"대기 사유: {wait_reason_text(reason)}")
+    reqs = []
+    for rp in progress.requirements:
+        rid = rp.requirement.requirement_id
+        if rp.satisfied:
+            reqs.append(f"{rid} 충족")
+        elif not rp.task_ids:
+            reqs.append(f"{rid} 미충족 (연결된 작업 없음)")
+        else:
+            reqs.append(f"{rid} 미충족 ({', '.join(rp.open_task_ids)} 미완료)")
+    lines.append(_row("요구사항", " · ".join(reqs) if reqs else "정의 없음"))
+    return lines
+
+
+HEADER_LINES = 3  # title, query time, rule
+
+
+def render_parts(snap: s.Snapshot, width: int = 80) -> tuple[list[str], list[str]]:
+    """(fixed header, scrollable body). The footer key line is added by the caller."""
+
     width = max(40, width)
     title = "Orca Orchestrator · 읽기 전용 상태"
     if snap.demo:
         title += f" · 데모 ({snap.demo})"
     taken = snap.taken_at.astimezone().strftime("%Y-%m-%d %H:%M:%S")
     rule = "─" * min(width, 72)
-    lines = [
+    header = [
         title,
         f"조회 시각 {taken}" + (" · 실제 CLI를 호출하지 않음" if snap.demo else ""),
         rule,
+    ]
+    body = [
         _row("Runtime", runtime_text(snap.runtime)),
         _row("바인딩", "Coordinator 터미널 바인딩 있음" if snap.bound else "없음"),
         _row("현재 Run", run_text(snap.run)),
         *dispatch_lines(snap),
         _row("사용량", " · ".join(f"{PROVIDER_NAMES[p]} {UNKNOWN}" for p in Provider)),
+        *task_lines(snap.tasks),
         rule,
     ]
     note = hint(snap)
     if note:
-        lines.append(note)
-    lines.append(FOOTER)
-    return [fit(line, width) for line in lines]
+        body.append(note)
+    return [fit(line, width) for line in header], [fit(line, width) for line in body]
+
+
+def render(snap: s.Snapshot, width: int = 80) -> list[str]:
+    """Every line at once (``--once`` and non-interactive output)."""
+
+    header, body = render_parts(snap, width)
+    return header + body + [fit(FOOTER, max(40, width))]
+
+
+@dataclass(frozen=True)
+class Frame:
+    lines: list[str]
+    offset: int  # first body line shown
+    max_offset: int  # 0 when the whole body fits
+    body_rows: int  # body lines visible at once
+
+
+TOO_LOW = "창이 낮아 {n}줄을 표시하지 못함"
+
+
+def scroll_footer(start: int, end: int, total: int) -> str:
+    """Key line while the body is clipped; ``start``/``end`` are 0-based, end exclusive."""
+
+    above, below = start, total - end
+    more = []
+    if above:
+        more.append(f"위 {above}줄")
+    if below:
+        more.append(f"아래 {below}줄")
+    return f"{FOOTER} · ↑↓ 이동 · {start + 1}–{end}/{total}줄 · " + "·".join(more) + " 더 있음"
+
+
+def layout(snap: s.Snapshot, width: int, height: int, offset: int = 0) -> Frame:
+    """Lines for a ``width`` x ``height`` terminal.
+
+    The title (first line) and the key line (last line) are always kept. When the
+    body does not fit, a window of it is shown and the key line says how much is
+    above and below. Never returns more than ``max(height, 2)`` lines.
+    """
+
+    header, body = render_parts(snap, width)
+    footer = fit(FOOTER, max(40, width))
+    if len(header) + len(body) + 1 <= height:
+        return Frame(header + body + [footer], 0, 0, len(body))
+    if height < len(header) + 2:
+        header = header[:1]  # very low terminal: keep only the title
+    rows = max(0, height - len(header) - 1)
+    if rows == 0:
+        status = fit(f"{FOOTER} · {TOO_LOW.format(n=len(body))}", max(40, width))
+        return Frame(header + [status], 0, 0, 0)
+    max_offset = max(0, len(body) - rows)
+    offset = min(max(0, offset), max_offset)
+    window = body[offset:offset + rows]
+    status = fit(scroll_footer(offset, offset + len(window), len(body)), max(40, width))
+    return Frame(header + window + [status], offset, max_offset, rows)

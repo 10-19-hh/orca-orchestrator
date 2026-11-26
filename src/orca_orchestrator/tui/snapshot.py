@@ -21,6 +21,7 @@ from ..orca.errors import (
     OutcomeUnknownError,
     RuntimeUnavailableError,
 )
+from ..tasks import NOT_CONFIGURED, TaskBoard, TaskSource
 
 # Runtime health
 CONNECTED = "connected"
@@ -63,6 +64,7 @@ class Snapshot:
     experiment_4a_status: str
     decisions: dict[Provider, DispatchDecision] = field(default_factory=dict)
     auth_env_present: dict[Provider, tuple[str, ...]] = field(default_factory=dict)
+    tasks: TaskBoard = NOT_CONFIGURED
 
 
 def _runtime_view(adapter: OrcaCliAdapter) -> RuntimeView:
@@ -103,8 +105,12 @@ def collect_snapshot(
     *,
     demo: str | None = None,
     now: datetime | None = None,
+    tasks: TaskSource | None = None,
 ) -> Snapshot:
-    """Runs at most ``status --json`` and, when bound and connected, ``run-current``."""
+    """Runs at most ``status --json`` and, when bound and connected, ``run-current``.
+
+    ``tasks`` only reads local files (or bundled demo data); it runs nothing.
+    """
 
     now = now or datetime.now(timezone.utc)
     runtime = _runtime_view(adapter)
@@ -136,4 +142,5 @@ def collect_snapshot(
         experiment_4a_status=guard.policy.experiment_4a_status,
         decisions=decisions,
         auth_env_present=auth_env,
+        tasks=tasks.load() if tasks is not None else NOT_CONFIGURED,
     )
