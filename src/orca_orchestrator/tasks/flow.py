@@ -400,7 +400,8 @@ def run_flow(
 
     ``notify(kind, payload)`` reports progress: ``"select"`` (Selection),
     ``"start"`` ((task, check)), ``"result"`` (VerificationRun), ``"warning"`` (str).
-    ``probe`` asks an executor whether an unconfirmed run still runs (default: never assumed).
+    ``probe`` asks an executor whether an unconfirmed run still runs (default: the last
+    observation stored in the record; local test processes are never assumed to have ended).
     """
 
     from .handoff import ClaimRefused, ResumeState, claim_task

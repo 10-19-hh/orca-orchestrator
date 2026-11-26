@@ -1,4 +1,4 @@
-"""Orca CLI adapter (COORDINATOR topology) and the real-dispatch gate."""
+"""Orca CLI adapter (COORDINATOR topology), Worker command contract and the real-dispatch gate."""
 
 from .adapter import (
     PINNED_ORCA_VERSIONS,
@@ -35,3 +35,14 @@ from .errors import (
     RuntimeUnavailableError,
 )
 from .runner import CommandResult, CommandRunner, SubprocessRunner
+from .workers import (
+    WORKER_CONTRACT,
+    StartDisposition,
+    WorkerEnd,
+    WorkerObservation,
+    WorkerStartReceipt,
+    WorkerStartRequest,
+    parse_worker_start,
+    worker_show_args,
+    worker_start_args,
+)

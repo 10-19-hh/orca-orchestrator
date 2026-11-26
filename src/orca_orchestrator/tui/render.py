@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 
 from ..tasks import BoardState, IssueCode, TaskBoard, TaskState
 from ..tasks.flow import STALE_TEXT, StopKind
-from ..tasks.handoff import RESUME_TEXT, ResumeState, attempt_line, progress_line, run_line
+from ..orca.workers import WORKER_CONTRACT, Evidence
+from ..tasks.handoff import RESUME_TEXT, ResumeState, attempt_line, observation_line, progress_line, run_line
 from ..tasks.review import (
     ApprovalState,
     approval_summary,
@@ -182,7 +183,7 @@ def dispatch_lines(snap: s.Snapshot) -> list[str]:
     status = "보류 · 현재 빌드는 Worker에 작업을 보내지 않음"
     if waiting:
         status += " · 리셋 대기: " + ", ".join(PROVIDER_NAMES[p] for p in waiting)
-    lines = [_row("작업 전송", status), "  보류 이유"]
+    lines = [_row("작업 전송", status), _row("Worker 명령", worker_contract_text()), "  보류 이유"]
     for code in ordered:
         having = [p for p in providers if code in codes_by_provider[p]]
         if len(having) == len(providers):
@@ -191,6 +192,15 @@ def dispatch_lines(snap: s.Snapshot) -> list[str]:
             for p in having:
                 lines.append(f"  · {PROVIDER_NAMES[p]}: {_reason_label(snap, code, p)}")
     return lines
+
+
+def worker_contract_text() -> str:
+    """How much of the Worker command contract is known, and where to check before a real test."""
+
+    documented = sum(1 for i in WORKER_CONTRACT if i.documented is not Evidence.UNVERIFIED)
+    observed = sum(1 for i in WORKER_CONTRACT if i.observed is Evidence.VERIFIED)
+    return (f"근거 문서·소스 {documented}/{len(WORKER_CONTRACT)} · 실측 {observed}/{len(WORKER_CONTRACT)} · "
+            "전송 전 점검: preflight 명령")
 
 
 def issue_text(issue) -> str:
@@ -285,6 +295,9 @@ def resume_lines(board: TaskBoard) -> list[str]:
     live = current is not None and current.state is ResumeState.RUNNING
     lines.append(_row("마지막 실행", attempt_line(last, live, local_time)))
     lines.append(f"  {run_line(last, live)}")
+    seen = observation_line(last, local_time)
+    if seen:
+        lines.append(f"  {seen}")
     lines.append(f"  {progress_line(last)}")
     lines.append(f"  다음 행동: {resume.next_action()}")
     return lines

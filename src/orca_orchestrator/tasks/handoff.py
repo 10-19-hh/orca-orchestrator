@@ -15,6 +15,9 @@ is free was cut off. Such an attempt, and one that ended without proof that
 everything stopped (a timeout, an interruption), blocks every new run of the
 task until the person confirms it stopped (:func:`confirm_stopped`) or an
 executor status check confirms it.
+
+Worker runs (``tasks/worker_runs.py``) use the same record: Orca's Dispatch ID
+as run ID (``dispatch:<id>``) and the last status Orca reported for it.
 """
 
 from __future__ import annotations
@@ -77,6 +80,10 @@ class CheckRun:
     exit_code: int | None = None
     message: str | None = None
     result_ref: str | None = None  # "<results file>#<task>/<check>"
+    # last executor status seen for this run (Worker runs): when, which end it implies, what was seen
+    observed_at: str | None = None
+    observed_state: str | None = None  # running / exited / unknown
+    observed: str | None = None
 
 
 @dataclass(frozen=True)
@@ -125,9 +132,12 @@ class HandoffFormatError(ValueError):
 
 
 def _run_doc(r: CheckRun) -> dict[str, Any]:
-    return {"check": r.check, "started_at": r.started_at, "run_id": r.run_id, "ended_at": r.ended_at,
-            "end": r.end.value if r.end else None, "outcome": r.outcome, "exit_code": r.exit_code,
-            "message": r.message, "result_ref": r.result_ref}
+    doc = {"check": r.check, "started_at": r.started_at, "run_id": r.run_id, "ended_at": r.ended_at,
+           "end": r.end.value if r.end else None, "outcome": r.outcome, "exit_code": r.exit_code,
+           "message": r.message, "result_ref": r.result_ref}
+    if r.observed_at is not None:  # only runs an executor status query looked at
+        doc["observed"] = {"at": r.observed_at, "state": r.observed_state, "text": r.observed}
+    return doc
 
 
 def attempt_doc(a: Attempt) -> dict[str, Any]:
@@ -176,8 +186,16 @@ def _parse_run(d: Any) -> CheckRun:
         end = RunEnd(d["end"]) if d.get("end") is not None else None
     except ValueError:
         raise HandoffFormatError("runs.end를 알 수 없음") from None
+    observed = d.get("observed")
+    if observed is not None:
+        if not isinstance(observed, dict):
+            raise HandoffFormatError("runs.observed: 객체가 아님")
+        if observed.get("state") not in {p.value for p in ProbeState}:
+            raise HandoffFormatError("runs.observed.state를 알 수 없음")
     return CheckRun(_str(d, "check", False), _str(d, "started_at", False), _str(d, "run_id"), _str(d, "ended_at"),
-                    end, _str(d, "outcome"), _int(d, "exit_code"), _str(d, "message"), _str(d, "result_ref"))
+                    end, _str(d, "outcome"), _int(d, "exit_code"), _str(d, "message"), _str(d, "result_ref"),
+                    _str(observed, "at", False) if observed else None, observed["state"] if observed else None,
+                    _str(observed, "text") if observed else None)
 
 
 def parse_attempt(d: Any) -> Attempt:
@@ -266,11 +284,18 @@ class ExecutorProbe(Protocol):
     def status(self, attempt: Attempt, run: CheckRun | None) -> ProbeState: ...
 
 
-class LocalProbe:
-    """Local test processes are not queried: their end stays unknown until the person confirms it."""
+class RecordedProbe:
+    """The default probe. Queries nothing: answers from the last executor observation in the record.
+
+    Local test processes are never queried, so their end stays unknown until
+    the person confirms it. A Worker seen settled and exited stays exited. Anything else (running when
+    last seen, never seen, a local test process) is not proof that it ended.
+    """
 
     def status(self, attempt: Attempt, run: CheckRun | None) -> ProbeState:
-        return ProbeState.UNKNOWN
+        if run is None or run.observed_state is None:
+            return ProbeState.UNKNOWN
+        return ProbeState(run.observed_state)
 
 
 # --- claiming a task --------------------------------------------------------------
@@ -326,7 +351,7 @@ def _remaining(plan: TaskPlan, task_id: str, results_path: Path, source: SourceS
 
 def run_text(r: CheckRun) -> str:
     if r.end is None:
-        return f"{r.check} 종료 기록 없음"
+        return f"{r.check} {r.message} · 종료 미확인" if r.message else f"{r.check} 종료 기록 없음"
     if r.outcome:
         word = "통과" if r.outcome == Outcome.PASSED.value else "실패"
         code = f" (종료 코드 {r.exit_code})" if r.exit_code is not None else ""
@@ -335,9 +360,28 @@ def run_text(r: CheckRun) -> str:
 
 
 CHECK_HINT = "확인할 것: 실행 ID의 테스트 프로세스와 그 하위 프로세스가 모두 끝났는지 (작업 관리자 등)"
+WORKER_RUN_PREFIX = "dispatch:"  # run IDs of Orca Worker Dispatches
+WORKER_CHECK_HINT = ("확인할 것: Orca에서 Worker가 정산(succeeded·failed·stopped·abandoned)되고 liveness가 "
+                     "exited인지 · 응답 없음·시간 초과·unverifiable은 종료 증거가 아님 · "
+                     "조회로 확인되지 않으면 Orca에서 직접 확인한 뒤 handoff --confirm-stopped")
+
+
+def is_worker_run(run_id: str | None) -> bool:
+    return bool(run_id) and run_id.startswith(WORKER_RUN_PREFIX)
+
+
+def check_hint(run_ids) -> str:
+    """What the person checks before confirming a stop, for the executors involved."""
+
+    ids = [r for r in run_ids if r]
+    if any(is_worker_run(r) for r in ids):
+        return WORKER_CHECK_HINT if all(is_worker_run(r) for r in ids) else f"{WORKER_CHECK_HINT}\n{CHECK_HINT}"
+    return CHECK_HINT
 
 
 def confirm_action(task_id: str, run_id: str | None) -> str:
+    if is_worker_run(run_id):
+        return "handoff --observe로 상태 조회 · 종료 확인 전 다시 보내지 않음"
     return f"{run_id or '실행 ID 미확인'} 종료 확인 후 handoff --confirm-stopped {task_id}"
 
 
@@ -394,6 +438,19 @@ class Claim:
         self._runs[-1] = replace(self._runs[-1], run_id=run_id)
         self._write()
 
+    def executor_observed(self, check_id: str, state: "ProbeState", text: str) -> None:
+        """Records what the executor reported for the current run (Worker start receipt or status query)."""
+
+        self._runs[-1] = replace(self._runs[-1], observed_at=_now_iso(self._now), observed_state=state.value,
+                                 observed=text)
+        self._write()
+
+    def run_open(self, check_id: str, message: str) -> None:
+        """The run continues outside this process (a Worker); its end stays unrecorded until observed."""
+
+        self._runs[-1] = replace(self._runs[-1], message=message)
+        self._write()
+
     def run_ended(self, check_id: str, end: RunEnd, *, outcome: str | None = None, exit_code: int | None = None,
                   message: str | None = None, result_ref: str | None = None) -> None:
         if not self._runs or self._runs[-1].check != check_id or self._runs[-1].end is not None:
@@ -409,7 +466,7 @@ class Claim:
             return
         self.closed = True
         try:
-            if interrupted and self._runs and self._runs[-1].end is None:
+            if interrupted and self._runs and self._runs[-1].end is None and not is_worker_run(self._runs[-1].run_id):
                 self._runs[-1] = replace(self._runs[-1], ended_at=_now_iso(self._now), end=RunEnd.UNKNOWN,
                                          message=f"중단됨 ({interrupted}) · 테스트 프로세스 종료 미확인")
             state = AttemptState.UNKNOWN if any(r.end in (RunEnd.UNKNOWN, None) for r in self._runs) \
@@ -460,10 +517,11 @@ def claim_task(
     """Takes ``task_id`` for this session and records the attempt, or raises ClaimRefused.
 
     An earlier attempt whose end is not confirmed refuses the claim, unless
-    ``probe`` (an executor status query) confirms it ended.
+    ``probe`` (an executor status query; default: the last stored observation) confirms it ended.
     """
 
     plan_path, results_path = Path(plan_path), Path(results_path)
+    probe = probe or RecordedProbe()
     held = hold(run_lock_path(results_path, task_id))
     if held is None:
         raise ClaimRefused(f"다른 세션이 {task_id}을(를) 실행 중이어서 시작하지 않음", ClaimRefused.BUSY, task_id)
@@ -489,8 +547,7 @@ def claim_task(
 
         def change(docs: list[dict]) -> None:
             previous = last_attempts(tuple(parse_attempt(d) for d in docs)).get(task_id)
-            if _unresolved(previous) and probe is not None and \
-                    probe.status(previous, previous.last_run) is ProbeState.EXITED:
+            if _unresolved(previous) and probe.status(previous, previous.last_run) is ProbeState.EXITED:
                 for d in docs:
                     if d.get("attempt") == previous.attempt_id:
                         d["resolved"] = {"at": _now_iso(now), "session": SESSION_ID, "note": "실행기 상태 조회로 종료 확인"}
@@ -687,7 +744,7 @@ def reconcile(
     ``blocked`` maps tasks the flow cannot select to (reason, hint), from the flow's blockers.
     """
 
-    probe = probe or LocalProbe()
+    probe = probe or RecordedProbe()
     blocked = blocked or {}
     lasts = last_attempts(attempts)
     out = []
@@ -702,8 +759,10 @@ def reconcile(
                 continue
             seen = probe.status(a, a.last_run)
             if seen is ProbeState.RUNNING:
+                wait = ("실행이 끝나기를 기다린 뒤 handoff --observe로 다시 조회 (다시 보내지 않음)"
+                        if a.last_run and is_worker_run(a.last_run.run_id) else "실행이 끝나기를 기다린 뒤 다시 확인")
                 out.append(TaskResume(tid, ResumeState.RUNNING, f"실행기에서 실행 중 (실행 ID {_run_ids(a)})",
-                                      "실행이 끝나기를 기다린 뒤 다시 확인", a, since))
+                                      wait, a, since))
                 continue
             if seen is ProbeState.UNKNOWN:
                 why = ("프로그램 중단 (종료 기록 없음)" if a.state is AttemptState.RUNNING
@@ -800,6 +859,20 @@ def run_line(a: Attempt, live: bool | None) -> str:
         if last.end is RunEnd.UNKNOWN:
             how = f"종료 미확인 · {how}"
     return f"실행 ID {_run_ids(a)} · {how}"
+
+
+OBSERVED_TEXT = {ProbeState.RUNNING.value: "실행 중", ProbeState.EXITED.value: "종료 확인",
+                 ProbeState.UNKNOWN.value: "종료 미확인"}
+
+
+def observation_line(a: Attempt, local_time: Callable[[str], str] = lambda s: s) -> str | None:
+    """The executor's last reported status for the attempt's last run, if one was ever observed."""
+
+    last = a.last_run
+    if last is None or last.observed_at is None:
+        return None
+    return " · ".join(x for x in (f"관측 {local_time(last.observed_at)}",
+                                  OBSERVED_TEXT.get(last.observed_state, last.observed_state), last.observed) if x)
 
 
 def progress_line(a: Attempt) -> str:

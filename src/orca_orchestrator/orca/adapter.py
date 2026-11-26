@@ -6,6 +6,10 @@ Only operations verified in Step 0 Experiment 1 on Orca 1.4.264 are wired:
 * ``orchestration run-current --json``      (read, Coordinator binding)
 * ``orchestration run-create --objective <text> --json``
                                             (creates a Run namespace only; never places Workers)
+* ``orchestration worker-show --dispatch <id> --json``
+                                            (read; response shape from the v1.4.264 source, not yet observed)
+
+``worker-start`` is not wired: its argv is only built (``workers.worker_start_args``).
 
 Experiment 1 showed that an external process without an inherited
 ``ORCA_TERMINAL_HANDLE`` is rejected with ``no_active_sender_terminal``. The
@@ -29,6 +33,7 @@ from .errors import (
     classify_orca_error,
 )
 from .runner import CommandLaunchError, CommandRunner, CommandTimeout, SubprocessRunner
+from .workers import WorkerObservation, worker_observation, worker_show_args
 
 # Version observed for CLI, desktop app and Runtime in Experiment 1.
 PINNED_ORCA_VERSIONS = frozenset({"1.4.264"})
@@ -168,6 +173,16 @@ class OrcaCliAdapter:
         if "runId" in result and result["runId"] is None:
             return None
         return self._run_ref(result)
+
+    def worker_show(self, dispatch_id: str) -> WorkerObservation:
+        """Orca's record of one Worker Dispatch. Read-only; needs no Coordinator binding.
+
+        A timeout raises :class:`OutcomeUnknownError` (mutation=False); the caller
+        treats the Worker's state as unknown.
+        """
+
+        result = self._invoke(worker_show_args(dispatch_id), mutation=False)
+        return worker_observation(result, dispatch_id, self._last_argv)
 
     # ---- mutation (Run namespace only) ------------------------------------
 

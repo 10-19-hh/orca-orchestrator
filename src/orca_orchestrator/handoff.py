@@ -8,7 +8,10 @@ stopped and what to do next.
 
 ``--confirm-stopped TASK --note TEXT`` records that the person checked the
 task's last run is no longer running (refused while a session holds the task).
-Nothing is run or resumed here; ``python -m orca_orchestrator.flow`` resumes.
+``--observe`` asks Orca how each unconfirmed Worker run stands
+(``worker-show``, read-only) and stores what it reported; only a settled
+Dispatch whose process Orca proved exited counts as ended.
+Nothing is run, sent or resumed here; ``python -m orca_orchestrator.flow`` resumes.
 
 Exit codes: 0 nothing blocks a resume (or the confirmation was recorded),
 1 confirmation refused, 2 files unusable, 6 another session runs a task,
@@ -21,22 +24,31 @@ import argparse
 import sys
 from pathlib import Path
 
+from .orca.adapter import OrcaCliAdapter
+from .orca.runner import SubprocessRunner
 from .tasks.codebase import code_basis
 from .tasks.flow import inspect, resume_view
 from .tasks.handoff import (
-    CHECK_HINT,
+    OBSERVED_TEXT,
     RESUME_TEXT,
     ClaimRefused,
     ResumeState,
     ResumeView,
     attempt_line,
+    check_hint,
     confirm_stopped,
+    observation_line,
     progress_line,
     run_line,
 )
+from .tasks.locks import LockTimeout
+from .tasks.worker_runs import WorkerProbe, observe_runs
 from .tasks.paths import handoff_path, tool_files
 from .tasks.verification import VerificationSetupError
+from .tui.readonly import ReadOnlyRunner
 from .tui.render import issue_text, local_time
+
+OBSERVE_TIMEOUT_SECONDS = 10.0
 
 EXIT_OK, EXIT_REFUSED_CONFIRM, EXIT_UNUSABLE, EXIT_BUSY, EXIT_CHECK = 0, 1, 2, 6, 7
 
@@ -53,6 +65,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--confirm-stopped", metavar="TASK_ID",
                         help="이 작업의 마지막 실행이 더 이상 돌지 않음을 확인했다고 기록합니다.")
     parser.add_argument("--note", metavar="TEXT", help="무엇을 확인했는지 (--confirm-stopped와 함께 필수)")
+    parser.add_argument("--observe", action="store_true",
+                        help="확인되지 않은 Worker 실행의 상태를 Orca에 조회(worker-show, 읽기 전용)해 기록합니다. "
+                        "다시 보내거나 중지하지 않습니다.")
     return parser
 
 
@@ -73,6 +88,9 @@ def print_resume(resume: ResumeView, source_digest: str | None) -> None:
         live = t.state is ResumeState.RUNNING
         _say(f"       마지막 실행 {attempt_line(a, live, local_time)}")
         _say(f"       {run_line(a, live)}")
+        seen = observation_line(a, local_time)
+        if seen:
+            _say(f"       {seen}")
         _say(f"       {progress_line(a)}")
         same = "현재와 같음" if source_digest and a.source_digest == source_digest else "현재와 다름"
         base = f"{a.base}({a.base_sha[:7]})" if a.base and a.base_sha else (a.base or "없음")
@@ -90,13 +108,18 @@ def print_resume(resume: ResumeView, source_digest: str | None) -> None:
         _say(f"       지금 할 일: {t.next_action}")
         if a.resolved:
             _say(f"       중지 확인: {local_time(a.resolved_at)} · {a.resolved_note}")
-    if any(t.state is ResumeState.CHECK_RUN for t in resume.tasks):
-        _say(CHECK_HINT)
+    checking = [t for t in resume.tasks if t.state is ResumeState.CHECK_RUN]
+    if checking:
+        _say(check_hint(r.run_id for t in checking if t.attempt for r in t.attempt.runs))
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, adapter: OrcaCliAdapter | None = None) -> int:
+    """``adapter`` replaces the real Orca CLI for --observe (tests use a fake runner)."""
+
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.observe and args.confirm_stopped:
+        parser.error("--observe와 --confirm-stopped는 따로 실행합니다.")
     if args.note and not args.confirm_stopped:
         parser.error("--note는 --confirm-stopped와 함께 씁니다.")
     if args.confirm_stopped and not (args.note and args.note.strip()):
@@ -119,6 +142,21 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_REFUSED_CONFIRM
         _say(f"중지 확인 기록: {attempt.task} · {attempt.attempt_id} · {args.note.strip()}")
         _say("재개는 python -m orca_orchestrator.flow로 직접 실행합니다.")
+    if args.observe:
+        adapter = adapter or OrcaCliAdapter(ReadOnlyRunner(SubprocessRunner(), allow_worker_show=True),
+                                            timeout=OBSERVE_TIMEOUT_SECONDS)
+        try:
+            seen = observe_runs(results, WorkerProbe(adapter.worker_show))
+        except VerificationSetupError as exc:
+            _say(f"조회 결과를 기록하지 않음 · {exc.message}")
+            return EXIT_UNUSABLE
+        except (LockTimeout, OSError) as exc:
+            _say(f"조회 결과를 기록하지 않음 · 실행 기록을 저장하지 못함 ({type(exc).__name__})")
+            return EXIT_UNUSABLE
+        if not seen:
+            _say("조회할 Worker 실행 없음 (확인이 필요한 dispatch: 실행 ID가 없음)")
+        for o in seen:
+            _say(f"Worker 조회: {o.task} · {o.run_id} · {OBSERVED_TEXT[o.state.value]} · {o.text}")
     try:
         view = inspect(plan, results, repo)
     except VerificationSetupError as exc:
