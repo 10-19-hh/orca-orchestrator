@@ -9,7 +9,8 @@ no tests, a timeout or launch failure, or a save that could not be recorded.
 
 Nothing is retried. A check whose current result is ``failed`` is never run
 again by the flow; the person fixes the cause and runs ``verify`` themselves.
-A result whose check definition changed (or that carries no digest) is stale;
+A result whose check definition changed, whose verified code differs from the
+files on disk now (``src/``, ``tests/``), or that lacks either digest is stale;
 a stale *passed* result is re-checked, a stale *failed* result is left for the
 person, like any failure.
 
@@ -29,7 +30,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
 
+from .codebase import source_state
 from .contract import Outcome, TaskPlan, VerificationResult, validate
+from .paths import flow_status_path, tool_files
 from .progress import (
     CheckProgress,
     CheckState,
@@ -58,6 +61,9 @@ FLOW_SCHEMA = "orca-orchestrator/flow-status@1"
 STALE_TEXT = {
     StaleReason.NO_DIGEST: "계획 정보 없는 결과",
     StaleReason.CHANGED: "검증 조건 변경",
+    StaleReason.NO_SOURCE: "코드 기준 없는 결과",
+    StaleReason.CODE_CHANGED: "검증 후 코드 변경",
+    StaleReason.SOURCE_UNKNOWN: "현재 코드 확인 불가",
 }
 
 
@@ -161,15 +167,19 @@ def select(plan: TaskPlan, progress: PlanProgress) -> FlowView:
     return FlowView(plan, progress, selection, tuple(blockers))
 
 
-def inspect(plan_path: Path, results_path: Path) -> FlowView:
-    """Reads both files and judges; raises VerificationSetupError when they cannot be used."""
+def inspect(plan_path: Path, results_path: Path, repo: Path | None = None) -> FlowView:
+    """Reads both files and judges; raises VerificationSetupError when they cannot be used.
+
+    With ``repo``, results are also judged against the code on disk now.
+    """
 
     plan = load_plan(plan_path)
     results = load_results(results_path)
     issues = validate(plan, results)
     if issues:
         raise VerificationSetupError("작업 정의 또는 검증 결과에 오류가 있어 판단하지 않음", issues)
-    return select(plan, evaluate(plan, results))
+    source = source_state(repo, tool_files(plan_path, results_path)) if repo is not None else None
+    return select(plan, evaluate(plan, results, source))
 
 
 # --- requirement trace (FR-07) ------------------------------------------------------
@@ -250,13 +260,6 @@ class FlowStatus:
 
 class FlowStatusError(ValueError):
     pass
-
-
-def flow_status_path(results_path: Path) -> Path:
-    results_path = Path(results_path)
-    if results_path.suffix == ".json":
-        return results_path.with_name(results_path.stem + ".flow.json")
-    return results_path.with_name(results_path.name + ".flow.json")
 
 
 def _iso(moment: datetime) -> str:
@@ -394,7 +397,7 @@ def run_flow(
 
     while True:
         try:
-            view = inspect(plan_path, results_path)
+            view = inspect(plan_path, results_path, Path(repo))
         except VerificationSetupError as exc:
             return stop(StopKind.REFUSED, exc.message, None)
         selection = view.next
@@ -430,7 +433,7 @@ def run_flow(
             if run.result.outcome is not Outcome.PASSED:
                 return stop(StopKind.FAILED, f"검증 실패 (종료 코드 {run.result.exit_code}) · {run.summary}", view, *key)
         try:
-            after = inspect(plan_path, results_path)
+            after = inspect(plan_path, results_path, Path(repo))
         except VerificationSetupError as exc:
             return stop(StopKind.REFUSED, exc.message, None)
         done = next((t for t in after.progress.tasks if t.task.task_id == selection.task_id), None)

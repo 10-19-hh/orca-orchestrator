@@ -1,0 +1,93 @@
+{
+  "current": {
+    "source_digest": "5f0c1e2d3a4b6978",
+    "source_files": 24,
+    "head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+    "dirty": true,
+    "changes": {
+      "base": "main",
+      "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+      "digest": "a4c2e9017b3d5f68",
+      "files": [
+        {
+          "path": "README.md",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/contract.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/progress.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tui/render.py",
+          "status": "modified"
+        }
+      ]
+    }
+  },
+  "changed": {
+    "source_digest": "9e8d7c6b5a493827",
+    "source_files": 24,
+    "head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+    "dirty": true,
+    "changes": {
+      "base": "main",
+      "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+      "digest": "b7e1f0a2c3d49586",
+      "files": [
+        {
+          "path": "README.md",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/contract.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/progress.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tui/render.py",
+          "status": "modified"
+        }
+      ]
+    }
+  },
+  "protected": {
+    "source_digest": "5f0c1e2d3a4b6978",
+    "source_files": 24,
+    "head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+    "dirty": true,
+    "changes": {
+      "base": "main",
+      "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+      "digest": "c0d1e2f3a4b59687",
+      "files": [
+        {
+          "path": "docs/PRD.md",
+          "status": "modified"
+        },
+        {
+          "path": "README.md",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/contract.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/progress.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tui/render.py",
+          "status": "modified"
+        }
+      ]
+    }
+  }
+}

@@ -10,6 +10,14 @@ from datetime import datetime, timezone
 
 from ..tasks import BoardState, IssueCode, TaskBoard, TaskState
 from ..tasks.flow import STALE_TEXT, StopKind
+from ..tasks.review import (
+    ApprovalState,
+    approval_summary,
+    basis_text,
+    change_lines,
+    changes_summary,
+    protected_summary,
+)
 from ..tasks.flow import wait_reason_text as _flow_wait_reason_text
 from . import snapshot as s
 
@@ -52,6 +60,8 @@ FOOTER = "r 새로고침 · q 종료"
 
 TASKS_NOT_CONFIGURED = "지정 안 함 (--tasks로 작업 정의 파일 지정)"
 MAX_ISSUE_LINES = 4
+MAX_CHANGE_LINES = 6
+MAX_BLOCKER_LINES = 6
 
 TASK_STATE_LABELS: dict[TaskState, str] = {
     TaskState.VERIFIED: "완료",
@@ -254,6 +264,29 @@ def flow_text(board: TaskBoard) -> str | None:
     return " · ".join(parts)
 
 
+def review_lines(board: TaskBoard) -> list[str]:
+    """Code basis, changes since the plan's base, protected paths and the approval state."""
+
+    review = board.review
+    current, recorded = review.current_results
+    basis = basis_text(review.code)
+    if recorded:
+        basis += f" · 현재 코드 결과 {current}/{recorded}"
+    lines = [_row("코드 기준", basis), _row("변경", changes_summary(review))]
+    changed = change_lines(review)
+    lines += [f"  {line}" for line in changed[:MAX_CHANGE_LINES]]
+    if len(changed) > MAX_CHANGE_LINES:
+        lines.append(f"  … 외 {len(changed) - MAX_CHANGE_LINES}개 (review 명령으로 전체 확인)")
+    lines.append(_row("보호 경로", protected_summary(review)))
+    lines.append(_row("최종 승인", approval_summary(review, local_time)))
+    if review.state is not ApprovalState.APPROVED:
+        shown = review.blockers[:MAX_BLOCKER_LINES]
+        lines += [f"  · {b.text}" for b in shown]
+        if len(review.blockers) > len(shown):
+            lines.append(f"  · … 외 {len(review.blockers) - len(shown)}건")
+    return lines
+
+
 def approval_text(board: TaskBoard) -> str:
     progress = board.progress
     if progress.all_verified:
@@ -303,7 +336,10 @@ def task_lines(board: TaskBoard) -> list[str]:
     flow = flow_text(board)
     if flow:
         lines.append(_row("흐름", flow))
-    lines.append(_row("최종 승인", approval_text(board)))
+    if board.review is not None:
+        lines += review_lines(board)
+    else:
+        lines.append(_row("최종 승인", approval_text(board)))
     return lines
 
 

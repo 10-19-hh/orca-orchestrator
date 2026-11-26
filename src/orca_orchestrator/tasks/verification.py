@@ -6,6 +6,11 @@ command runs once, without a shell, and its exit code decides ``passed`` (0) or
 ``failed`` (anything else). Nothing is recorded when the command times out,
 cannot start, or runs no tests.
 
+Each result also records which code it verified: the digest of the files under
+``src/`` and ``tests/`` taken before the run (``source_digest``), plus Git HEAD
+and whether there were uncommitted changes, for display. If those files change
+while the tests run, nothing is recorded.
+
 Results are stored in the ``verification-results@1`` format that the status
 screen reads with ``--results``. The file is not locked while tests run. Just
 before saving, one process at a time re-reads the latest plan and results,
@@ -30,6 +35,7 @@ from typing import Callable, Iterator, Mapping
 
 from ..orca.dispatch import AUTH_ENV_NAMES
 from ..orca.runner import CommandLaunchError, CommandResult, CommandRunner, CommandTimeout, SubprocessRunner
+from .codebase import GitReader, code_basis, scope_text, source_state
 from .contract import (
     RESULTS_SCHEMA,
     Outcome,
@@ -42,6 +48,7 @@ from .contract import (
     parse_results,
     validate,
 )
+from .paths import lock_path, tool_files
 
 DEFAULT_TIMEOUT_SECONDS = 600.0
 DEFAULT_LOCK_TIMEOUT_SECONDS = 30.0
@@ -154,17 +161,27 @@ def results_document(results: tuple[VerificationResult, ...]) -> dict:
             entry["evidence"] = r.evidence
         if r.check_digest is not None:
             entry["check_digest"] = r.check_digest
+        if r.source_digest is not None:
+            entry["source_digest"] = r.source_digest
+        if r.git_head is not None:
+            entry["git_head"] = r.git_head
+        if r.git_dirty is not None:
+            entry["git_dirty"] = r.git_dirty
         entries.append(entry)
     return {"schema": RESULTS_SCHEMA, "results": entries}
 
 
 def write_results(path: Path, results: tuple[VerificationResult, ...]) -> None:
+    write_json(path, results_document(results))
+
+
+def write_json(path: Path, document: object) -> None:
     """Replaces the file in one step so a reader never sees a half-written file.
 
     On any failure the temporary file is removed and the original stays as it was.
     """
 
-    text = json.dumps(results_document(results), ensure_ascii=False, indent=2) + "\n"
+    text = json.dumps(document, ensure_ascii=False, indent=2) + "\n"
     fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
@@ -185,10 +202,6 @@ def write_results(path: Path, results: tuple[VerificationResult, ...]) -> None:
         except OSError:
             pass
         raise
-
-
-def lock_path(results_path: Path) -> Path:
-    return results_path.with_name(results_path.name + ".lock")
 
 
 class LockTimeout(Exception):
@@ -388,9 +401,15 @@ def verify(
     runner_factory: Callable[[dict[str, str]], CommandRunner] = SubprocessRunner,
     python: str | None = None,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    git: GitReader | None = None,
 ) -> VerificationRun:
     plan_path, results_path, repo = Path(plan_path), Path(results_path), Path(repo).resolve()
     _, command, digest = prepare(plan_path, results_path, task_id, check_id, repo)
+    own_files = tool_files(plan_path, results_path)
+    before = source_state(repo, own_files)
+    if before.digest is None:
+        raise VerificationSetupError(before.error or "검증 대상 파일을 확인할 수 없음")
+    basis = code_basis(repo, own_files, git)
 
     python = python if python is not None else sys.executable
     if not python:
@@ -404,6 +423,12 @@ def verify(
     except CommandLaunchError as exc:
         raise VerificationNotCompleted(f"실행하지 못함 ({exc})") from None
 
+    after = source_state(repo, own_files)
+    if after.digest != before.digest:
+        raise VerificationNotCompleted(
+            f"테스트하는 동안 검증 대상 파일({scope_text()})이 바뀌어 어느 코드의 결과인지 알 수 없음"
+        )
+
     summary = summarize(output)
     if summary.no_tests or summary.tests_run == 0:
         raise VerificationNotCompleted(f"실행된 테스트가 없음 (tests 폴더 확인, 종료 코드 {output.exit_code})")
@@ -413,7 +438,8 @@ def verify(
     outcome = Outcome.PASSED if output.exit_code == 0 else Outcome.FAILED
     stamp = started.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     result = VerificationResult(
-        task_id, check_id, outcome, output.exit_code, f"{command.display} · {stamp} · {summary.text}", digest
+        task_id, check_id, outcome, output.exit_code, f"{command.display} · {stamp} · {summary.text}", digest,
+        before.digest, basis.head, basis.dirty,
     )
     kept, replaced = save_result(plan_path, results_path, result, lock_timeout=lock_timeout)
     return VerificationRun(result, command, output, summary.text, kept, replaced)

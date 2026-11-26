@@ -1,0 +1,27 @@
+{
+  "schema": "orca-orchestrator/verification-results@1",
+  "results": [
+    {
+      "task": "T-1",
+      "check": "unit-tests",
+      "outcome": "passed",
+      "exit_code": 0,
+      "evidence": "python -m unittest discover -s tests · 2026-11-26T11:20:00Z · Ran 187 tests · OK",
+      "check_digest": "529fcc1d224f6f21",
+      "source_digest": "5f0c1e2d3a4b6978",
+      "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+      "git_dirty": true
+    },
+    {
+      "task": "T-2",
+      "check": "screen-tests",
+      "outcome": "passed",
+      "exit_code": 0,
+      "evidence": "사용자가 상태 화면 테스트를 직접 실행 · 2026-11-26T11:25:00Z · Ran 40 tests · OK",
+      "check_digest": "1e82e6737992784e",
+      "source_digest": "5f0c1e2d3a4b6978",
+      "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+      "git_dirty": true
+    }
+  ]
+}

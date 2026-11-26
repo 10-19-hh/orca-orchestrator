@@ -45,6 +45,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="RESULTS_JSON",
         help="검증 결과 파일(JSON)입니다. --tasks와 함께 씁니다. 명령을 실행하지 않고 기록된 결과만 읽습니다.",
     )
+    parser.add_argument(
+        "--repo",
+        metavar="DIR",
+        help="검증 대상 코드와 변경을 확인할 저장소 루트입니다 (기본: 현재 폴더). --tasks와 함께 씁니다. "
+        "읽기 전용 git 명령만 실행합니다.",
+    )
     parser.add_argument("--once", action="store_true", help="화면을 한 번 출력하고 종료합니다.")
     return parser
 
@@ -58,13 +64,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--demo는 포함된 데모 작업 목록만 씁니다. --tasks/--results와 함께 쓸 수 없습니다.")
     if args.results and not args.tasks:
         parser.error("--results는 --tasks와 함께 써야 합니다.")
+    if args.repo and not args.tasks:
+        parser.error("--repo는 --tasks와 함께 써야 합니다.")
 
     if args.demo:
         adapter, _ = demo_adapter(args.demo)
         tasks = DemoTaskSource(args.demo_results or "passed")
     else:
         adapter = OrcaCliAdapter(ReadOnlyRunner(SubprocessRunner()), timeout=SCREEN_TIMEOUT_SECONDS)
-        tasks = FileTaskSource(args.tasks, args.results) if args.tasks else None
+        tasks = FileTaskSource(args.tasks, args.results, args.repo or ".") if args.tasks else None
     guard = DispatchGuard()  # default policy: real dispatch blocked
 
     def collect():

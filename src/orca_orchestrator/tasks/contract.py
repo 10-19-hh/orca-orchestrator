@@ -54,12 +54,18 @@ class Task:
     requirement_ids: tuple[str, ...]
     dependencies: tuple[str, ...]
     checks: tuple[Check, ...]
+    # Repository paths this task is expected to change: links changed files to the task (FR-07).
+    paths: tuple[str, ...] = ()
+    # Repository paths this task must not change relative to the plan's base (FR-06).
+    protected_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class TaskPlan:
     requirements: tuple[Requirement, ...]
     tasks: tuple[Task, ...]
+    # Git revision the change review compares against (a commit, tag or branch name).
+    base: str | None = None
 
 
 class Outcome(str, Enum):
@@ -77,6 +83,19 @@ class VerificationResult:
     # Digest of the check definition the result was produced for (see check_digest).
     # None for results written before digests existed or by hand: applicability unknown.
     check_digest: str | None = None
+    # Digest of the files the check read (tasks.codebase.source_state) when it ran.
+    # None for older or hand-written results: which code was verified is unknown.
+    source_digest: str | None = None
+    # Git HEAD and whether the working tree had uncommitted changes, for display only.
+    # Validity is decided by source_digest, never by HEAD.
+    git_head: str | None = None
+    git_dirty: bool | None = None
+
+
+def path_matches(path: str, patterns: tuple[str, ...]) -> bool:
+    """``path`` equals a pattern or lies below it (``src/a`` matches ``src/a/b.py``)."""
+
+    return any(path == p.rstrip("/") or path.startswith(p.rstrip("/") + "/") for p in patterns)
 
 
 CHECK_DIGEST_LENGTH = 16
@@ -162,6 +181,25 @@ def _id_list(value: Any, where: str) -> tuple[str, ...]:
     return items
 
 
+_BASE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./~^@{}-]*")
+_SHA = re.compile(r"[0-9a-f]{40}([0-9a-f]{24})?")
+
+
+def _repo_path(value: Any, where: str) -> str:
+    text = _text(value, where)
+    if "\\" in text or text.startswith("/") or re.match(r"[A-Za-z]:", text):
+        raise PlanFormatError(where, "저장소 루트 기준 상대 경로('/' 구분)가 아님")
+    parts = text.rstrip("/").split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        raise PlanFormatError(where, "빈 경로 조각, '.', '..'은 쓸 수 없음")
+    return text
+
+
+def _path_list(value: Any, where: str) -> tuple[str, ...]:
+    items = _id_list(value, where)
+    return tuple(_repo_path(item, f"{where}[{i}]") for i, item in enumerate(items))
+
+
 def _list(value: Any, where: str) -> list:
     if not isinstance(value, list):
         raise PlanFormatError(where, "목록이 아님")
@@ -175,8 +213,18 @@ def _schema(data: Any, expected: str, keys: tuple[str, ...]) -> dict:
     return data
 
 
+def _schema_optional(data: Any, expected: str, keys: tuple[str, ...], optional: tuple[str, ...]) -> dict:
+    data = _object(data, "$", ("schema", *keys), optional)
+    if data["schema"] != expected:
+        raise PlanFormatError("$.schema", f"'{expected}'가 아님")
+    return data
+
+
 def parse_plan(data: Any) -> TaskPlan:
-    data = _schema(data, PLAN_SCHEMA, ("requirements", "tasks"))
+    data = _schema_optional(data, PLAN_SCHEMA, ("requirements", "tasks"), ("base",))
+    base = _optional_text(data.get("base"), "base")
+    if base is not None and not _BASE.fullmatch(base):
+        raise PlanFormatError("base", "Git 리비전 이름이 아님 (영문자·숫자로 시작, 공백 없음)")
     requirements = []
     for i, raw in enumerate(_list(data["requirements"], "requirements")):
         where = f"requirements[{i}]"
@@ -191,7 +239,8 @@ def parse_plan(data: Any) -> TaskPlan:
     tasks = []
     for i, raw in enumerate(_list(data["tasks"], "tasks")):
         where = f"tasks[{i}]"
-        raw = _object(raw, where, ("id", "title", "requirements", "checks"), ("depends_on",))
+        raw = _object(raw, where, ("id", "title", "requirements", "checks"),
+                      ("depends_on", "paths", "protected_paths"))
         checks = []
         for j, check in enumerate(_list(raw["checks"], f"{where}.checks")):
             cw = f"{where}.checks[{j}]"
@@ -210,9 +259,21 @@ def parse_plan(data: Any) -> TaskPlan:
                 _id_list(raw["requirements"], f"{where}.requirements"),
                 _id_list(raw.get("depends_on", []), f"{where}.depends_on"),
                 tuple(checks),
+                _path_list(raw.get("paths", []), f"{where}.paths"),
+                _path_list(raw.get("protected_paths", []), f"{where}.protected_paths"),
             )
         )
-    return TaskPlan(tuple(requirements), tuple(tasks))
+    return TaskPlan(tuple(requirements), tuple(tasks), base)
+
+
+def plan_digest(data: Any) -> str:
+    """Fingerprint of a whole plan document (any edit changes it), for approvals."""
+
+    import hashlib
+    import json
+
+    canonical = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:CHECK_DIGEST_LENGTH]
 
 
 def parse_results(data: Any) -> tuple[VerificationResult, ...]:
@@ -220,7 +281,8 @@ def parse_results(data: Any) -> tuple[VerificationResult, ...]:
     results = []
     for i, raw in enumerate(_list(data["results"], "results")):
         where = f"results[{i}]"
-        raw = _object(raw, where, ("task", "check", "outcome"), ("exit_code", "evidence", "check_digest"))
+        raw = _object(raw, where, ("task", "check", "outcome"),
+                      ("exit_code", "evidence", "check_digest", "source_digest", "git_head", "git_dirty"))
         try:
             outcome = Outcome(raw["outcome"])
         except ValueError:
@@ -231,6 +293,15 @@ def parse_results(data: Any) -> tuple[VerificationResult, ...]:
         digest = _optional_text(raw.get("check_digest"), f"{where}.check_digest")
         if digest is not None and not _DIGEST.fullmatch(digest):
             raise PlanFormatError(f"{where}.check_digest", f"소문자 16진수 {CHECK_DIGEST_LENGTH}자가 아님")
+        source = _optional_text(raw.get("source_digest"), f"{where}.source_digest")
+        if source is not None and not _DIGEST.fullmatch(source):
+            raise PlanFormatError(f"{where}.source_digest", f"소문자 16진수 {CHECK_DIGEST_LENGTH}자가 아님")
+        head = _optional_text(raw.get("git_head"), f"{where}.git_head")
+        if head is not None and not _SHA.fullmatch(head):
+            raise PlanFormatError(f"{where}.git_head", "Git 커밋 ID(16진수 40자)가 아님")
+        dirty = raw.get("git_dirty")
+        if dirty is not None and not isinstance(dirty, bool):
+            raise PlanFormatError(f"{where}.git_dirty", "true 또는 false가 아님")
         results.append(
             VerificationResult(
                 _text(raw["task"], f"{where}.task"),
@@ -239,6 +310,9 @@ def parse_results(data: Any) -> tuple[VerificationResult, ...]:
                 exit_code,
                 _optional_text(raw.get("evidence"), f"{where}.evidence"),
                 digest,
+                source,
+                head,
+                dirty,
             )
         )
     return tuple(results)

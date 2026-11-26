@@ -15,6 +15,7 @@ venv/
 .env
 .env.*
 
-# Local verification byproducts next to a results file
+# Local verification and review byproducts next to a results file
 *.json.lock
 *.flow.json
+*.approval.json

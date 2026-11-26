@@ -48,7 +48,8 @@ STOP_TITLES = {
     StopKind.NOT_RECORDED: "흐름 중단",
     StopKind.REFUSED: "흐름 중단",
 }
-APPROVAL_LINE = "최종 승인: 대기 · 로컬 검증 결과와 별개로 사용자가 직접 승인합니다 (자동 승인 없음)"
+APPROVAL_LINE = ("최종 승인: 흐름은 승인하지 않습니다 · python -m orca_orchestrator.review로 "
+                 "변경과 증거를 확인한 뒤 사용자가 직접 승인합니다")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -107,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         try:
-            view = inspect(Path(args.tasks), Path(args.results))
+            view = inspect(Path(args.tasks), Path(args.results), Path(args.repo))
         except VerificationSetupError as exc:
             _say(f"판단하지 않음 · {exc.message}")
             for issue in exc.issues[:5]:
@@ -147,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     elif stop.kind in (StopKind.NOT_COMPLETED, StopKind.NOT_RECORDED):
         _say(f"이번 검증은 기록하지 않았습니다. {results_name}의 이전 결과는 그대로이며 같은 명령으로 이어서 실행할 수 있습니다.")
     try:
-        view = inspect(Path(args.tasks), Path(args.results))
+        view = inspect(Path(args.tasks), Path(args.results), Path(args.repo))
     except VerificationSetupError as exc:
         view = None
         for issue in exc.issues[:5]:

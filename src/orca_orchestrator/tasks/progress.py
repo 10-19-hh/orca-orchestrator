@@ -1,9 +1,10 @@
 """Judges each task from recorded verification results (FR-06 input, FR-07 trace).
 
 Only results that were supplied are used, and only when they still apply: a
-result counts when its ``check_digest`` matches the current check definition.
-A result without a digest, or with a different one, is *stale* and the check
-needs re-checking. A task is complete when every check has a current
+result counts when its ``check_digest`` matches the current check definition
+and, when the current code is known (``source``), its ``source_digest``
+matches the files the check reads now. A result without either digest, or
+with a different one, is *stale* and the check needs re-checking. A task is complete when every check has a current
 ``passed`` result; any current ``failed`` result means it is not complete. A
 task is ready only when every direct prerequisite is complete; otherwise it
 waits and the reasons name each unfinished prerequisite.
@@ -14,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from .codebase import SourceState
 from .contract import (
     Check,
     Outcome,
@@ -36,6 +38,9 @@ class CheckState(str, Enum):
 class StaleReason(str, Enum):
     NO_DIGEST = "no_digest"  # recorded without a check digest: applicability unknown
     CHANGED = "changed"  # the check definition changed after the result was recorded
+    NO_SOURCE = "no_source"  # recorded without a source digest: verified code unknown
+    CODE_CHANGED = "code_changed"  # files in the verification scope changed after the run
+    SOURCE_UNKNOWN = "source_unknown"  # the current code could not be fingerprinted
 
 
 @dataclass(frozen=True)
@@ -114,24 +119,35 @@ class InvalidPlanError(ValueError):
     """evaluate() refuses a plan that has contract issues."""
 
 
-def _check_progress(task: Task, check: Check, result: VerificationResult | None) -> CheckProgress:
+def _check_progress(task: Task, check: Check, result: VerificationResult | None,
+                    source: SourceState | None) -> CheckProgress:
     if result is None:
         return CheckProgress(check, CheckState.MISSING)
     if result.check_digest is None:
         return CheckProgress(check, CheckState.STALE, result, StaleReason.NO_DIGEST)
     if result.check_digest != check_digest(task, check):
         return CheckProgress(check, CheckState.STALE, result, StaleReason.CHANGED)
+    if source is not None:
+        if result.source_digest is None:
+            return CheckProgress(check, CheckState.STALE, result, StaleReason.NO_SOURCE)
+        if source.digest is None:
+            return CheckProgress(check, CheckState.STALE, result, StaleReason.SOURCE_UNKNOWN)
+        if result.source_digest != source.digest:
+            return CheckProgress(check, CheckState.STALE, result, StaleReason.CODE_CHANGED)
     state = CheckState.PASSED if result.outcome is Outcome.PASSED else CheckState.FAILED
     return CheckProgress(check, state, result)
 
 
-def evaluate(plan: TaskPlan, results: tuple[VerificationResult, ...] = ()) -> PlanProgress:
+def evaluate(plan: TaskPlan, results: tuple[VerificationResult, ...] = (),
+             source: SourceState | None = None) -> PlanProgress:
+    """``source`` is the current code; None judges results by check definition only."""
+
     if validate(plan, results):
         raise InvalidPlanError("plan has contract issues; call validate() first")
 
     by_key = {(r.task_id, r.check_id): r for r in results}
     checks: dict[str, tuple[CheckProgress, ...]] = {
-        task.task_id: tuple(_check_progress(task, c, by_key.get((task.task_id, c.check_id))) for c in task.checks)
+        task.task_id: tuple(_check_progress(task, c, by_key.get((task.task_id, c.check_id)), source) for c in task.checks)
         for task in plan.tasks
     }
 

@@ -22,6 +22,8 @@ from orca_orchestrator.tasks import (
     IssueCode,
     build_board,
 )
+from orca_orchestrator.tasks.codebase import source_state
+from orca_orchestrator.tasks.paths import tool_files
 from orca_orchestrator.tui import app, render as r
 from orca_orchestrator.tui.demo import SCENARIOS, demo_adapter
 from orca_orchestrator.tui.readonly import ALLOWED_TAILS, ReadOnlyRunner, ReadOnlyViolation
@@ -373,7 +375,7 @@ class TaskScreenTest(unittest.TestCase):
                     self.assertTrue(all(c[1:] in ALLOWED_TAILS for c in runner.calls))
                     self.assertTrue(all(r.display_width(line) <= 80 for line in lines))
                     if scenario == "connected":
-                        self.assertLessEqual(len(lines), 28)
+                        self.assertLessEqual(len(lines), 38)
                         self.assertFalse(any(line.startswith("안내:") for line in lines))
 
     def test_invalid_plan_lists_issues_and_judges_nothing(self):
@@ -458,21 +460,25 @@ class TaskOptionTest(unittest.TestCase):
         bundled = resources.files("orca_orchestrator").joinpath("fixtures")
         with tempfile.TemporaryDirectory() as tmp:
             plan = write_file(tmp, "plan.json", bundled.joinpath("demo_task_plan.json").read_text(encoding="utf-8"))
-            results = write_file(tmp, "results.json",
-                                 bundled.joinpath("demo_results_failed.json").read_text(encoding="utf-8"))
+            failed = json.loads(bundled.joinpath("demo_results_failed.json").read_text(encoding="utf-8"))
+            current = source_state(tmp, tool_files(Path(plan), Path(tmp) / "results.json")).digest
+            failed["results"][0]["source_digest"] = current  # verified against this (empty) repository
+            results = write_file(tmp, "results.json", json.dumps(failed))
             out = io.StringIO()
             with mock.patch.object(cli, "SubprocessRunner", lambda: fake), \
                     mock.patch.dict("os.environ", {"ORCA_CLI_COMMAND": FAKE_CLI}), redirect_stdout(out):
-                code = cli.main(["--once", "--tasks", plan, "--results", results])
+                code = cli.main(["--once", "--tasks", plan, "--results", results, "--repo", tmp])
         self.assertEqual(code, 0)
         self.assertIn("대기 사유: 선행 작업 T-1 검증 실패", out.getvalue())
+        self.assertIn("변경        비교 불가 · --repo가 Git 저장소가 아님", out.getvalue())
+        self.assertIn("  · T-1: 보호 경로 확인 불가", out.getvalue())
         self.assertIn("plan.json · results.json", out.getvalue())
         self.assertNotIn(tmp, out.getvalue())
         self.assertEqual([c[1:] for c in fake.calls], [STATUS])
 
     def test_option_combinations_rejected(self):
         for argv in (["--demo-results", "failed"], ["--demo", "--tasks", "p.json"],
-                     ["--results", "r.json"], ["--demo", "--demo-results", "maybe"]):
+                     ["--results", "r.json"], ["--demo", "--demo-results", "maybe"], ["--repo", "."]):
             with self.subTest(argv):
                 with redirect_stdout(io.StringIO()), mock.patch("sys.stderr", io.StringIO()):
                     with self.assertRaises(SystemExit):
@@ -534,8 +540,8 @@ class LayoutTest(unittest.TestCase):
         for variant in DEMO_RESULTS:
             with self.subTest(variant):
                 snap = demo_snapshot(variant)
-                frame = r.layout(snap, 79, 30)
-                self.assert_frame(frame, 30)
+                frame = r.layout(snap, 79, 40)
+                self.assert_frame(frame, 40)
                 self.assertEqual(frame.lines, r.render(snap, 79))
                 self.assertEqual((frame.offset, frame.max_offset), (0, 0))
                 self.assertEqual(frame.lines[-1], r.FOOTER)
@@ -651,7 +657,7 @@ class ScrollLoopTest(unittest.TestCase):
         self.assertTrue(all(r.display_width(line) <= 59 for line in frames[2]))
 
     def test_short_content_unchanged(self):
-        code, _, _, frames = self.drive([app.DOWN, "q"], lambda: (80, 30), lambda: demo_snapshot("passed"))
+        code, _, _, frames = self.drive([app.DOWN, "q"], lambda: (80, 40), lambda: demo_snapshot("passed"))
         self.assertEqual(frames[0], r.render(demo_snapshot("passed"), 79))
         self.assertEqual(frames[0], frames[1])  # nothing to scroll
 
@@ -684,7 +690,7 @@ class OnceOutputTest(unittest.TestCase):
                     mock.patch.object(cli, "run_interactive", side_effect=AssertionError("interactive")), \
                     mock.patch.object(cli.sys.stdin, "isatty", lambda: tty, create=True), \
                     mock.patch.dict("os.environ", {"ORCA_CLI_COMMAND": FAKE_CLI}), redirect_stdout(out):
-                code = cli.main(argv + ["--tasks", plan_path, "--results", results_path])
+                code = cli.main(argv + ["--tasks", plan_path, "--results", results_path, "--repo", tmp])
         return code, out.getvalue().splitlines()
 
     def test_once_and_no_tty_print_everything(self):

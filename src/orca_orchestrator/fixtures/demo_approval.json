@@ -1,0 +1,80 @@
+{
+  "schema": "orca-orchestrator/approval@1",
+  "decision": "approved",
+  "at": "2026-11-26T11:30:00Z",
+  "note": null,
+  "plan_digest": "950dc4886601bf84",
+  "source_digest": "5f0c1e2d3a4b6978",
+  "base": "main",
+  "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+  "changes_digest": "a4c2e9017b3d5f68",
+  "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+  "git_dirty": true,
+  "changes": [
+    {
+      "path": "README.md",
+      "status": "modified",
+      "tasks": []
+    },
+    {
+      "path": "src/orca_orchestrator/tasks/contract.py",
+      "status": "modified",
+      "tasks": [
+        "T-1"
+      ]
+    },
+    {
+      "path": "src/orca_orchestrator/tasks/progress.py",
+      "status": "modified",
+      "tasks": [
+        "T-1"
+      ]
+    },
+    {
+      "path": "src/orca_orchestrator/tui/render.py",
+      "status": "modified",
+      "tasks": [
+        "T-2"
+      ]
+    }
+  ],
+  "confirmed_unlinked": [
+    "README.md"
+  ],
+  "evidence": [
+    {
+      "task": "T-1",
+      "check": "unit-tests",
+      "state": "passed",
+      "outcome": "passed",
+      "exit_code": 0,
+      "evidence": "python -m unittest discover -s tests · 2026-11-26T11:20:00Z · Ran 187 tests · OK",
+      "source_digest": "5f0c1e2d3a4b6978"
+    },
+    {
+      "task": "T-2",
+      "check": "screen-tests",
+      "state": "passed",
+      "outcome": "passed",
+      "exit_code": 0,
+      "evidence": "사용자가 상태 화면 테스트를 직접 실행 · 2026-11-26T11:25:00Z · Ran 40 tests · OK",
+      "source_digest": "5f0c1e2d3a4b6978"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-01",
+      "satisfied": true,
+      "tasks": [
+        "T-1"
+      ]
+    },
+    {
+      "id": "FR-07",
+      "satisfied": true,
+      "tasks": [
+        "T-2"
+      ]
+    }
+  ]
+}
