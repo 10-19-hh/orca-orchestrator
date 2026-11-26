@@ -32,7 +32,7 @@ from .orca.dispatch import (
     observe_auth_environment,
 )
 from .orca.errors import CoordinatorBindingError, OrcaAdapterError
-from .orca.evidence import EXPERIMENT_4A_STATUS, PROVIDER_EVIDENCE
+from .orca.evidence import EXPERIMENT_4A_STATUS, EXPERIMENT_4B_CLAUDE_STATUS, PROVIDER_EVIDENCE
 from .orca.runner import SubprocessRunner
 from .orca.workers import WORKER_CONTRACT, WorkerStartRequest, worker_start_args
 from .tasks.handoff import RESUME_TEXT, ResumeState
@@ -242,7 +242,9 @@ def lines(pf: Preflight) -> list[str]:
     out += [
         "필요한 승인",
         f"  · 4-A 통과 (현재 {EXPERIMENT_4A_STATUS}): 위 '남음' 항목의 근거",
-        f"  · 4-{'B' if pf.provider is Provider.CLAUDE else 'C'} 실행 승인 (사용자): {name} 최소 Worker 1회 · 없음",
+        (f"  · 4-B 실행 승인 (사용자): 지난 1회 승인은 실행에 사용됨 (결과 {EXPERIMENT_4B_CLAUDE_STATUS}) · "
+         "다시 실행하려면 새 승인" if pf.provider is Provider.CLAUDE
+         else f"  · 4-C 실행 승인 (사용자): {name} 최소 Worker 1회 · 없음"),
         f"  · {name} 사용량 측정 분리: 사용자 또는 별도 수행자 (같은 사용량 풀의 다른 세션과 분리)",
         "  · 실제 전송 경로: 이 빌드에 없음 · 별도 변경과 승인 필요",
     ]

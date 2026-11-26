@@ -1,0 +1,115 @@
+{
+  "schema": "orca-orchestrator/handoff@1",
+  "attempts": [
+    {
+      "attempt": "a-20261126T112000Z-1c2d3e",
+      "task": "T-1",
+      "requirements": [
+        "FR-01"
+      ],
+      "checks": [
+        "unit-tests"
+      ],
+      "paths": [
+        "src/orca_orchestrator/tasks/"
+      ],
+      "protected_paths": [
+        "docs/PRD.md"
+      ],
+      "base": "main",
+      "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+      "changes_digest": "a4c2e9017b3d5f68",
+      "changes_count": 4,
+      "plan_digest": "950dc4886601bf84",
+      "check_digests": {
+        "unit-tests": "529fcc1d224f6f21"
+      },
+      "source_digest": "5f0c1e2d3a4b6978",
+      "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+      "git_dirty": true,
+      "session": "s-0a1b2c3d",
+      "owner_pid": 4100,
+      "executor": "local-unittest",
+      "started_at": "2026-11-26T11:20:00Z",
+      "state": "ended",
+      "runs": [
+        {
+          "check": "unit-tests",
+          "started_at": "2026-11-26T11:20:00Z",
+          "run_id": "pid:4242",
+          "ended_at": "2026-11-26T11:20:09Z",
+          "end": "exited",
+          "outcome": "passed",
+          "exit_code": 0,
+          "message": "Ran 187 tests · OK",
+          "result_ref": "demo_results_passed.json#T-1/unit-tests"
+        }
+      ],
+      "ended_at": "2026-11-26T11:20:09Z",
+      "done": [
+        "unit-tests"
+      ],
+      "remaining": [],
+      "reason": "unit-tests 통과 (종료 코드 0) · Ran 187 tests · OK",
+      "next_action": "flow로 다음 작업 진행 (모두 끝났으면 review로 확인 후 승인)",
+      "resolved": null
+    },
+    {
+      "attempt": "a-20261126T113100Z-7e8f90",
+      "task": "T-2",
+      "requirements": [
+        "FR-07"
+      ],
+      "checks": [
+        "worker"
+      ],
+      "paths": [
+        "src/orca_orchestrator/tui/"
+      ],
+      "protected_paths": [
+        "src/orca_orchestrator/orca/dispatch.py"
+      ],
+      "base": "main",
+      "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+      "changes_digest": "a4c2e9017b3d5f68",
+      "changes_count": 4,
+      "plan_digest": "950dc4886601bf84",
+      "check_digests": {},
+      "source_digest": "5f0c1e2d3a4b6978",
+      "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+      "git_dirty": true,
+      "session": "s-4d5e6f70",
+      "owner_pid": 5200,
+      "executor": "orca-worker:claude",
+      "started_at": "2026-11-26T11:31:00Z",
+      "state": "unknown",
+      "runs": [
+        {
+          "check": "worker",
+          "started_at": "2026-11-26T11:31:00Z",
+          "run_id": "dispatch:example-dispatch-4b",
+          "ended_at": null,
+          "end": null,
+          "outcome": null,
+          "exit_code": null,
+          "message": "시작됨 (ready · terminal)",
+          "result_ref": null,
+          "orca_run": "run_0123456789ab",
+          "observed": {
+            "at": "2026-11-26T11:44:00Z",
+            "state": "exited",
+            "text": "작업 succeeded(settled) · 프로세스 exited · 터미널 released"
+          }
+        }
+      ],
+      "ended_at": "2026-11-26T11:31:04Z",
+      "done": [],
+      "remaining": [
+        "screen-tests"
+      ],
+      "reason": "worker 시작됨 (ready · terminal) · 종료 미확인",
+      "next_action": "handoff --observe로 상태 조회 · 종료 확인 전 다시 보내지 않음",
+      "resolved": null
+    }
+  ]
+}

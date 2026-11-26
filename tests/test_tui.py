@@ -558,7 +558,11 @@ class LayoutTest(unittest.TestCase):
                 self.assert_frame(bottom, 24)
                 self.assertEqual(bottom.lines[-2], body[-1])  # the bottom rule is reachable
                 self.assertTrue(any(line.startswith("최종 승인") for line in bottom.lines))
-                self.assertTrue(any(line.startswith("다음 작업") for line in bottom.lines))
+                # every body line, the task flow lines included, is on some page
+                seen = {line for offset in range(bottom.offset + 1)
+                        for line in r.layout(snap, 79, 24, offset=offset).lines}
+                self.assertTrue(any(line.startswith("다음 작업") for line in seen))
+                self.assertTrue(all(r.fit(line, 79) in seen for line in body))
 
     def test_80x24_long_tasks_and_reasons_scroll(self):
         snap = long_snapshot()

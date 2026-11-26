@@ -10,7 +10,9 @@ stopped and what to do next.
 task's last run is no longer running (refused while a session holds the task).
 ``--observe`` asks Orca how each unconfirmed Worker run stands
 (``worker-show``, read-only) and stores what it reported; only a settled
-Dispatch whose process Orca proved exited counts as ended.
+Dispatch whose process Orca proved exited and whose terminal it released
+counts as ended. A settled Dispatch still cleaning up is shown as
+"작업 완료·터미널 정리 중"; a failed query keeps the last usable reply.
 Nothing is run, sent or resumed here; ``python -m orca_orchestrator.flow`` resumes.
 
 Exit codes: 0 nothing blocks a resume (or the confirmation was recorded),
@@ -37,7 +39,7 @@ from .tasks.handoff import (
     attempt_line,
     check_hint,
     confirm_stopped,
-    observation_line,
+    observation_lines,
     progress_line,
     run_line,
 )
@@ -88,8 +90,7 @@ def print_resume(resume: ResumeView, source_digest: str | None) -> None:
         live = t.state is ResumeState.RUNNING
         _say(f"       마지막 실행 {attempt_line(a, live, local_time)}")
         _say(f"       {run_line(a, live)}")
-        seen = observation_line(a, local_time)
-        if seen:
+        for seen in observation_lines(a, local_time):
             _say(f"       {seen}")
         _say(f"       {progress_line(a)}")
         same = "현재와 같음" if source_digest and a.source_digest == source_digest else "현재와 다름"

@@ -229,7 +229,7 @@ def _check_needs(tp) -> str:
 def run_blockers(resume) -> tuple[Blocker, ...]:
     """Approval waits while a task runs or an earlier run's end is unconfirmed (tasks.handoff)."""
 
-    from .handoff import ResumeState
+    from .handoff import RESUME_TEXT, ResumeState
 
     if resume is None:
         return ()
@@ -241,6 +241,8 @@ def run_blockers(resume) -> tuple[Blocker, ...]:
             out.append(Blocker(BlockKind.RUN, t.task_id, f"{t.task_id}: 실행 상태 확인 필요 · {t.reason}"))
         elif t.state is ResumeState.RUNNING:
             out.append(Blocker(BlockKind.RUN, t.task_id, f"{t.task_id}: 실행 중 · {t.reason}"))
+        elif t.state is ResumeState.FINISHING:
+            out.append(Blocker(BlockKind.RUN, t.task_id, f"{t.task_id}: {RESUME_TEXT[t.state]}"))
     return tuple(out)
 
 

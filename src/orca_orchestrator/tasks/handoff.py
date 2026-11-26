@@ -82,8 +82,12 @@ class CheckRun:
     result_ref: str | None = None  # "<results file>#<task>/<check>"
     # last executor status seen for this run (Worker runs): when, which end it implies, what was seen
     observed_at: str | None = None
-    observed_state: str | None = None  # running / exited / unknown
+    observed_state: str | None = None  # running / finishing / exited / unknown
     observed: str | None = None
+    orca_run: str | None = None  # Worker runs: the Orca Run the start reported (replies naming another are refused)
+    observe_failed: bool = False  # the last status query got no usable reply
+    # the last usable reply, kept while later queries fail: (at, state, text)
+    last_seen: tuple[str, str, str | None] | None = None
 
 
 @dataclass(frozen=True)
@@ -135,8 +139,20 @@ def _run_doc(r: CheckRun) -> dict[str, Any]:
     doc = {"check": r.check, "started_at": r.started_at, "run_id": r.run_id, "ended_at": r.ended_at,
            "end": r.end.value if r.end else None, "outcome": r.outcome, "exit_code": r.exit_code,
            "message": r.message, "result_ref": r.result_ref}
+    if r.orca_run is not None:
+        doc["orca_run"] = r.orca_run
     if r.observed_at is not None:  # only runs an executor status query looked at
-        doc["observed"] = {"at": r.observed_at, "state": r.observed_state, "text": r.observed}
+        doc["observed"] = observed_doc(r.observed_at, r.observed_state, r.observed, r.observe_failed, r.last_seen)
+    return doc
+
+
+def observed_doc(at: str, state: str, text: str | None, failed: bool = False,
+                 last_seen: tuple[str, str, str | None] | None = None) -> dict[str, Any]:
+    doc: dict[str, Any] = {"at": at, "state": state, "text": text}
+    if failed:
+        doc["failed"] = True
+    if last_seen is not None:
+        doc["last_seen"] = {"at": last_seen[0], "state": last_seen[1], "text": last_seen[2]}
     return doc
 
 
@@ -187,15 +203,24 @@ def _parse_run(d: Any) -> CheckRun:
     except ValueError:
         raise HandoffFormatError("runs.end를 알 수 없음") from None
     observed = d.get("observed")
+    seen = None
     if observed is not None:
         if not isinstance(observed, dict):
             raise HandoffFormatError("runs.observed: 객체가 아님")
         if observed.get("state") not in {p.value for p in ProbeState}:
             raise HandoffFormatError("runs.observed.state를 알 수 없음")
+        if not isinstance(observed.get("failed", False), bool):
+            raise HandoffFormatError("runs.observed.failed: 참·거짓이 아님")
+        last = observed.get("last_seen")
+        if last is not None:
+            if not isinstance(last, dict) or last.get("state") not in {p.value for p in ProbeState}:
+                raise HandoffFormatError("runs.observed.last_seen을 알 수 없음")
+            seen = (_str(last, "at", False), last["state"], _str(last, "text"))
     return CheckRun(_str(d, "check", False), _str(d, "started_at", False), _str(d, "run_id"), _str(d, "ended_at"),
                     end, _str(d, "outcome"), _int(d, "exit_code"), _str(d, "message"), _str(d, "result_ref"),
                     _str(observed, "at", False) if observed else None, observed["state"] if observed else None,
-                    _str(observed, "text") if observed else None)
+                    _str(observed, "text") if observed else None, _str(d, "orca_run"),
+                    bool(observed.get("failed", False)) if observed else False, seen)
 
 
 def parse_attempt(d: Any) -> Attempt:
@@ -274,6 +299,7 @@ def last_attempts(attempts: tuple[Attempt, ...]) -> dict[str, Attempt]:
 
 class ProbeState(str, Enum):
     RUNNING = "running"
+    FINISHING = "finishing"  # its work is settled, but its process or terminal is not confirmed gone
     EXITED = "exited"
     UNKNOWN = "unknown"
 
@@ -288,8 +314,8 @@ class RecordedProbe:
     """The default probe. Queries nothing: answers from the last executor observation in the record.
 
     Local test processes are never queried, so their end stays unknown until
-    the person confirms it. A Worker seen settled and exited stays exited. Anything else (running when
-    last seen, never seen, a local test process) is not proof that it ended.
+    the person confirms it. A Worker seen settled, exited and released stays exited. Anything else (running
+    or finishing when last seen, a failed query, never seen, a local test process) is not proof that it ended.
     """
 
     def status(self, attempt: Attempt, run: CheckRun | None) -> ProbeState:
@@ -362,8 +388,8 @@ def run_text(r: CheckRun) -> str:
 CHECK_HINT = "확인할 것: 실행 ID의 테스트 프로세스와 그 하위 프로세스가 모두 끝났는지 (작업 관리자 등)"
 WORKER_RUN_PREFIX = "dispatch:"  # run IDs of Orca Worker Dispatches
 WORKER_CHECK_HINT = ("확인할 것: Orca에서 Worker가 정산(succeeded·failed·stopped·abandoned)되고 liveness가 "
-                     "exited인지 · 응답 없음·시간 초과·unverifiable은 종료 증거가 아님 · "
-                     "조회로 확인되지 않으면 Orca에서 직접 확인한 뒤 handoff --confirm-stopped")
+                     "exited, 터미널이 released인지 · 응답 없음·시간 초과·unverifiable·출력의 완료 문구는 "
+                     "종료 증거가 아님 · 조회로 확인되지 않으면 Orca에서 직접 확인한 뒤 handoff --confirm-stopped")
 
 
 def is_worker_run(run_id: str | None) -> bool:
@@ -434,8 +460,8 @@ class Claim:
         self._runs.append(CheckRun(check_id, _now_iso(self._now)))
         self._write()
 
-    def executor_started(self, check_id: str, run_id: str) -> None:
-        self._runs[-1] = replace(self._runs[-1], run_id=run_id)
+    def executor_started(self, check_id: str, run_id: str, orca_run: str | None = None) -> None:
+        self._runs[-1] = replace(self._runs[-1], run_id=run_id, orca_run=orca_run)
         self._write()
 
     def executor_observed(self, check_id: str, state: "ProbeState", text: str) -> None:
@@ -624,6 +650,7 @@ class ResumeState(str, Enum):
     WAITING = "waiting"  # prerequisites not complete
     BLOCKED = "blocked"  # ready, but the flow cannot run what remains (e.g. an unsupported check)
     RUNNING = "running"  # another live session (or the executor) runs it
+    FINISHING = "finishing"  # Orca settled the Worker's Dispatch; its process or terminal is still being cleaned up
     CHECK_RUN = "check_run"  # 실행 상태 확인 필요: cut off or end unknown
 
 
@@ -635,6 +662,7 @@ RESUME_TEXT = {
     ResumeState.WAITING: "대기",
     ResumeState.BLOCKED: "진행 불가",
     ResumeState.RUNNING: "다른 세션 실행 중",
+    ResumeState.FINISHING: "Worker 작업 완료·터미널 정리 중",
     ResumeState.CHECK_RUN: "실행 상태 확인 필요",
 }
 
@@ -665,9 +693,9 @@ class ResumeView:
 
     @property
     def blocking(self) -> TaskResume | None:
-        """The first task that stops any new run: run state unknown first, then another live session."""
+        """The first task that stops any new run: run state unknown first, then a live session or Worker."""
 
-        for state in (ResumeState.CHECK_RUN, ResumeState.RUNNING):
+        for state in (ResumeState.CHECK_RUN, ResumeState.RUNNING, ResumeState.FINISHING):
             hit = next((t for t in self.tasks if t.state is state), None)
             if hit:
                 return hit
@@ -758,6 +786,10 @@ def reconcile(
                                       f"세션 {a.session}이 끝나기를 기다린 뒤 다시 확인", a, since))
                 continue
             seen = probe.status(a, a.last_run)
+            if seen is ProbeState.FINISHING:
+                out.append(TaskResume(tid, ResumeState.FINISHING, f"실행 ID {_run_ids(a)} · 다시 보내지 않음",
+                                      "정리가 끝나기를 기다린 뒤 handoff --observe로 다시 조회", a, since))
+                continue
             if seen is ProbeState.RUNNING:
                 wait = ("실행이 끝나기를 기다린 뒤 handoff --observe로 다시 조회 (다시 보내지 않음)"
                         if a.last_run and is_worker_run(a.last_run.run_id) else "실행이 끝나기를 기다린 뒤 다시 확인")
@@ -837,8 +869,11 @@ ATTEMPT_TEXT = {AttemptState.RUNNING: "실행 중", AttemptState.ENDED: "종료"
 def attempt_line(a: Attempt, live: bool | None, local_time: Callable[[str], str] = lambda s: s) -> str:
     """Task, how the attempt stands, when it started and which session ran it."""
 
-    if a.state is AttemptState.RUNNING:
+    seen = _orca_seen(a.last_run)
+    if a.state is AttemptState.RUNNING and seen is None:
         state = "실행 중" if live else "중단 (종료 기록 없음)"
+    elif a.state is not AttemptState.ENDED and seen is not None and not a.resolved:
+        state = f"{OBSERVED_TEXT[seen]} (Orca 조회)"
     else:
         state = ATTEMPT_TEXT[a.state]
     if a.resolved:
@@ -852,7 +887,10 @@ def run_line(a: Attempt, live: bool | None) -> str:
     last = a.last_run
     if last is None:
         return "실행 ID 없음 · 실행한 확인 없음"
-    if last.end is None:
+    seen = _orca_seen(last)
+    if last.end is None and seen is not None:
+        how = OBSERVED_TEXT[seen]
+    elif last.end is None:
         how = "실행 중" if live else "종료 미확인"
     else:
         how = run_text(last)
@@ -861,18 +899,37 @@ def run_line(a: Attempt, live: bool | None) -> str:
     return f"실행 ID {_run_ids(a)} · {how}"
 
 
-OBSERVED_TEXT = {ProbeState.RUNNING.value: "실행 중", ProbeState.EXITED.value: "종료 확인",
-                 ProbeState.UNKNOWN.value: "종료 미확인"}
+OBSERVED_TEXT = {ProbeState.RUNNING.value: "실행 중", ProbeState.FINISHING.value: "작업 완료·터미널 정리 중",
+                 ProbeState.EXITED.value: "종료 확인", ProbeState.UNKNOWN.value: "종료 미확인"}
 
 
-def observation_line(a: Attempt, local_time: Callable[[str], str] = lambda s: s) -> str | None:
-    """The executor's last reported status for the attempt's last run, if one was ever observed."""
+def _orca_seen(run: CheckRun | None) -> str | None:
+    """The stored Worker observation that says more than "unknown": finishing or exited."""
+
+    if run is None or not is_worker_run(run.run_id) or run.observe_failed:
+        return None
+    return run.observed_state if run.observed_state in (ProbeState.FINISHING.value, ProbeState.EXITED.value) else None
+
+
+def observation_lines(a: Attempt, local_time: Callable[[str], str] = lambda s: s) -> list[str]:
+    """The executor's last reported status for the attempt's last run, if one was ever observed.
+
+    After a failed query a second line names the last usable reply, so what
+    was last confirmed and what cannot be confirmed now both stay visible.
+    """
 
     last = a.last_run
     if last is None or last.observed_at is None:
-        return None
-    return " · ".join(x for x in (f"관측 {local_time(last.observed_at)}",
-                                  OBSERVED_TEXT.get(last.observed_state, last.observed_state), last.observed) if x)
+        return []
+    lines = [f"관측 {local_time(last.observed_at)} · {OBSERVED_TEXT.get(last.observed_state, last.observed_state)}"]
+    if last.observed:
+        lines.append(f"  {last.observed}")
+    if last.last_seen is not None:
+        at, state, text = last.last_seen
+        lines.append(f"마지막 확인 {local_time(at)} · {OBSERVED_TEXT.get(state, state)}")
+        if text:
+            lines.append(f"  {text}")
+    return lines
 
 
 def progress_line(a: Attempt) -> str:

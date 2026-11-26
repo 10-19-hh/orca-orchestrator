@@ -38,10 +38,11 @@ from .runner import CommandResult, CommandRunner, SubprocessRunner
 from .workers import (
     WORKER_CONTRACT,
     StartDisposition,
-    WorkerEnd,
     WorkerObservation,
+    WorkerPhase,
     WorkerStartReceipt,
     WorkerStartRequest,
+    is_dispatch_id,
     parse_worker_start,
     worker_show_args,
     worker_start_args,

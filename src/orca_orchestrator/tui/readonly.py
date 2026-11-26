@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Sequence
 
 from ..orca.runner import CommandResult, CommandRunner
-from ..orca.workers import DISPATCH_ID_PATTERN
+from ..orca.workers import is_dispatch_id
 
 # Command tails (after the CLI path) the status screen may run.
 ALLOWED_TAILS: frozenset[tuple[str, ...]] = frozenset(
@@ -26,7 +26,7 @@ class ReadOnlyViolation(PermissionError):
 
 def _is_worker_show(tail: tuple[str, ...]) -> bool:
     return (len(tail) == 5 and tail[:3] == ("orchestration", "worker-show", "--dispatch")
-            and DISPATCH_ID_PATTERN.match(tail[3]) is not None and tail[4] == "--json")
+            and is_dispatch_id(tail[3]) and tail[4] == "--json")
 
 
 class ReadOnlyRunner:

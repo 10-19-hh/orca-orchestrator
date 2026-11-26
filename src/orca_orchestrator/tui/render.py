@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from ..tasks import BoardState, IssueCode, TaskBoard, TaskState
 from ..tasks.flow import STALE_TEXT, StopKind
 from ..orca.workers import WORKER_CONTRACT, Evidence
-from ..tasks.handoff import RESUME_TEXT, ResumeState, attempt_line, observation_line, progress_line, run_line
+from ..tasks.handoff import RESUME_TEXT, ResumeState, attempt_line, observation_lines, progress_line, run_line
 from ..tasks.review import (
     ApprovalState,
     approval_summary,
@@ -48,7 +48,7 @@ REASON_LABELS: dict[Reason, str] = {
     Reason.ORCA_VERSION_UNPINNED: "검증되지 않은 Orca 버전",
     Reason.USAGE_LIMIT_WAITING_FOR_RESET: "사용 한도 도달, 리셋 대기",
     Reason.USAGE_RECHECK_REQUIRED: "리셋 이후 사용량 재확인 필요",
-    Reason.WORKER_DISPATCH_CONTRACT_UNVERIFIED: "worker-start 계약 미검증 (현재 빌드는 전송하지 않음)",
+    Reason.WORKER_DISPATCH_CONTRACT_UNVERIFIED: "Worker 실행 계약 일부 미검증 (현재 빌드는 전송하지 않음)",
 }
 
 HINT_CLI_MISSING = "안내: Orca CLI를 찾지 못했습니다. ORCA_CLI_COMMAND에 경로를 지정하세요."
@@ -199,8 +199,9 @@ def worker_contract_text() -> str:
 
     documented = sum(1 for i in WORKER_CONTRACT if i.documented is not Evidence.UNVERIFIED)
     observed = sum(1 for i in WORKER_CONTRACT if i.observed is Evidence.VERIFIED)
-    return (f"근거 문서·소스 {documented}/{len(WORKER_CONTRACT)} · 실측 {observed}/{len(WORKER_CONTRACT)} · "
-            "전송 전 점검: preflight 명령")
+    partial = sum(1 for i in WORKER_CONTRACT if i.observed is Evidence.PARTIAL)
+    return (f"근거 문서·소스 {documented}/{len(WORKER_CONTRACT)} · 실측 {observed}/{len(WORKER_CONTRACT)}"
+            f"{f'·일부 {partial}' if partial else ''} · 전송 전 점검: preflight")
 
 
 def issue_text(issue) -> str:
@@ -295,9 +296,7 @@ def resume_lines(board: TaskBoard) -> list[str]:
     live = current is not None and current.state is ResumeState.RUNNING
     lines.append(_row("마지막 실행", attempt_line(last, live, local_time)))
     lines.append(f"  {run_line(last, live)}")
-    seen = observation_line(last, local_time)
-    if seen:
-        lines.append(f"  {seen}")
+    lines.extend(f"  {seen}" for seen in observation_lines(last, local_time))
     lines.append(f"  {progress_line(last)}")
     lines.append(f"  다음 행동: {resume.next_action()}")
     return lines

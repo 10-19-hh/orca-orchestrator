@@ -87,17 +87,24 @@
         {
           "check": "worker",
           "started_at": "2026-11-26T11:31:00Z",
-          "run_id": "dispatch:dsp_example01",
+          "run_id": "dispatch:example-dispatch-4b",
           "ended_at": null,
           "end": null,
           "outcome": null,
           "exit_code": null,
-          "message": "시작됨 (ready)",
+          "message": "시작됨 (ready · terminal)",
           "result_ref": null,
+          "orca_run": "run_0123456789ab",
           "observed": {
             "at": "2026-11-26T11:52:00Z",
             "state": "unknown",
-            "text": "worker-show 조회 실패 (outcome_unknown)"
+            "text": "worker-show 조회 실패 (outcome_unknown) · 확인 불가: 작업·프로세스·터미널",
+            "failed": true,
+            "last_seen": {
+              "at": "2026-11-26T11:40:00Z",
+              "state": "finishing",
+              "text": "작업 succeeded(settled) · 프로세스 live · 터미널 reclaimable"
+            }
           }
         }
       ],
@@ -106,7 +113,7 @@
       "remaining": [
         "screen-tests"
       ],
-      "reason": "worker 시작됨 (ready) · 종료 미확인",
+      "reason": "worker 시작됨 (ready · terminal) · 종료 미확인",
       "next_action": "handoff --observe로 상태 조회 · 종료 확인 전 다시 보내지 않음",
       "resolved": null
     }

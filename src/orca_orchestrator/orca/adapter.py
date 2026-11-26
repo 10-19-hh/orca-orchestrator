@@ -174,15 +174,17 @@ class OrcaCliAdapter:
             return None
         return self._run_ref(result)
 
-    def worker_show(self, dispatch_id: str) -> WorkerObservation:
+    def worker_show(self, dispatch_id: str, run_id: str | None = None) -> WorkerObservation:
         """Orca's record of one Worker Dispatch. Read-only; needs no Coordinator binding.
 
-        A timeout raises :class:`OutcomeUnknownError` (mutation=False); the caller
-        treats the Worker's state as unknown.
+        ``run_id`` is the Orca Run the start reported; a reply naming another
+        Run (or another Dispatch) raises :class:`InvalidResponseError`. A timeout
+        raises :class:`OutcomeUnknownError` (mutation=False); the caller treats
+        the Worker's state as unknown.
         """
 
         result = self._invoke(worker_show_args(dispatch_id), mutation=False)
-        return worker_observation(result, dispatch_id, self._last_argv)
+        return worker_observation(result, dispatch_id, self._last_argv, expected_run=run_id)
 
     # ---- mutation (Run namespace only) ------------------------------------
 

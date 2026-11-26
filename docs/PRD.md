@@ -159,19 +159,20 @@ approve/deny는 권한 프롬프트, gate-create/gate-resolve는 진행 게이�
 
 ## 07  Step 0 기술 타당성 게이트
 
-Step 0의 실행 계약, 보고서, 기능별 판정과 원본 증거는 로컬 환경·계정 관측을 담고 있어 공개 저장소에 포함하지 않고 관리자 로컬에 보관한다. 아래 판정은 그 기록에서 확인된 결론만 옮긴 것이다. 공개 테스트와 데모 화면의 응답 픽스처(`src/orca_orchestrator/fixtures/orca_cli_1.4.264.json`)는 Experiment 1에서 Windows 호스트에 기록한 Orca 1.4.264 응답이다. 응답 구조·종료 코드·오류 코드와 메시지는 기록 그대로이며, Run ID·목표 문구·사용자 경로만 예시 값으로 바꿨다.
+Step 0의 실행 계약, 보고서, 기능별 판정과 원본 증거는 로컬 환경·계정 관측을 담고 있어 공개 저장소에 포함하지 않고 관리자 로컬에 보관한다. 아래 판정은 그 기록에서 확인된 결론만 옮긴 것이다. 공개 테스트와 데모 화면의 응답 픽스처(`src/orca_orchestrator/fixtures/orca_cli_1.4.264.json`)는 Experiment 1에서 Windows 호스트에 기록한 Orca 1.4.264 응답이다. 응답 구조·종료 코드·오류 코드와 메시지는 기록 그대로이며, Run ID·목표 문구·사용자 경로만 예시 값으로 바꿨다. Worker 수명 주기 픽스처(`src/orca_orchestrator/fixtures/worker_lifecycle_1.4.264.json`)는 테스트용 예시다. 상태 값과 순서는 Experiment 4-B의 관측을 따르고, 필드 구성은 설치 1.4.264 CLI의 간략 응답 보기를 따르며, ID는 예시 값이다(실험 기록에 응답 원문이 남지 않았다).
 
 | 범위 | 현재 판정 |
 | --- | --- |
 | Experiment 1 | Orca CLI·앱·Runtime 1.4.264에서 `EXTERNAL` Run 생성은 `no_active_sender_terminal`로 차단됐다. `COORDINATOR` Run 생성과 터미널 바인딩은 검증됐다. `LOW_LEVEL`은 인터페이스 확인까지 완료했다. |
 | Experiment 2 | 계정·사용량 일부를 관측했다. 계정별로 신뢰할 수 있는 잔여량은 미확인이다. |
-| Experiment 4-A | `CONDITIONAL`. 예정 Worker의 구독 인증, 자동 PTY 작업 전달에 대한 정책 적합성 및 구독 외 과금 배제가 미확인이다. 최근 확인에서 기존 격리 PTY를 이용할 수 없어 로그인 상태는 미확인으로 남았다. |
-| Experiment 4-B·4-C | 보류. 실제 Worker 기동과 상태 제어는 `UNVERIFIED`다. |
+| Experiment 4-A | `CONDITIONAL`. 예정 Worker의 구독 인증과 구독 외 과금 배제가 미확인이다. 자동 PTY 작업 전달의 정책 적합성은 실험 계정에 대한 개별 답변만 있어, 다른 사용자에게 적용되는 공개 근거로는 미확인이다. |
+| Experiment 4-B (Claude) | `PARTIAL`. 승인된 1회 실행에서 Worker 시작(`ready`, `mode` `terminal`), 작업 정산(`succeeded`), 터미널 반환(`released`)과 프로세스 종료(`exited`)를 확인했다(`VERIFIED`). 실제 구독 인증은 `UNVERIFIED`, 과금은 `INCONCLUSIVE`다. |
+| Experiment 4-C (Codex) | 보류. |
 | Feasibility Gate, Experiment 3·5 | Gate는 보류다. 이후 수명 주기와 오케스트레이션 경계 검증은 기존 승인 순서를 따른다. |
 
 **개발 착수**는 확정했다. 별도 오프라인 PoC를 생략하고 실제 프로젝트의 Orca 연동 코드와 로컬 계약 테스트를 작성한다. 개발 중 계정 화면을 반복 점검할 필요는 없다.
 
-**실제 Worker 호출**은 승인되지 않았다. 첫 실제 호출 직전에 유효 실행 경로의 구독 인증과 계정 일치, 자동화 정책, 구독 외 과금 배제를 확인한다. 4-A 통과, 해당 실행의 별도 사용자 승인 및 측정 격리가 확보되면 4-B와 4-C의 최소 실행을 순서대로 검증할 수 있다. 사용량 변화가 뚜렷하지 않으면 `INCONCLUSIVE`, 계측 오염은 `CONTAMINATED`로 기록한다.
+**제품의 실제 Worker 호출**은 승인되지 않았다. Claude 4-B는 그 실험에만 적용된 승인으로 Step 0 측정 스크립트가 한 번 실행했고, 제품 빌드에는 여전히 전송 경로가 없다. 다음 실제 호출 직전에 유효 실행 경로의 구독 인증과 계정 일치, 자동화 정책, 구독 외 과금 배제를 확인한다. 4-A 통과, 해당 실행의 별도 사용자 승인 및 측정 격리가 확보되면 다음 최소 실행(Claude 재시험 또는 Codex 4-C)을 검증할 수 있다. 사용량 변화가 뚜렷하지 않으면 `INCONCLUSIVE`, 계측 오염은 `CONTAMINATED`로 기록한다.
 
 | Gate 판정 | 정의 |
 | --- | --- |
@@ -238,31 +239,53 @@ FR-01·FR-05·FR-06·FR-07·FR-08·FR-09의 첫 구현이다. 사람이 명시�
 
 ### Worker 어댑터와 전송 전 점검 (Phase 1)
 
-첫 실제 Worker 시험(4-B)에 필요한 명령 구성, 응답 해석, 상태 연결과 실행 없는 점검이다. 이 빌드에는 `worker-start`를 보내는 경로가 없고, 전송 게이트는 `worker-start 계약 미검증`을 항상 차단 사유로 낸다.
+실제 Worker 시험에 필요한 명령 구성, 응답 해석, 상태 연결과 실행 없는 점검이다. Claude 4-B 실측에 맞춰 갱신했다. 이 빌드에는 `worker-start`를 보내는 경로가 없고, 전송 게이트는 `Worker 실행 계약 일부 미검증`을 항상 차단 사유로 낸다.
 
 | 항목 | 범위 |
 | --- | --- |
-| 명령 근거 | 설치 `1.4.264`의 `agent-context --json` 명령 스키마와 번들 `orchestration` 스킬, Orca `v1.4.264` 릴리스 소스를 대조했다. 항목마다 문서·소스 근거(`DOCUMENTED`·`SOURCE_VERIFIED`)와 실측 상태(`VERIFIED`·`UNVERIFIED`)를 따로 표시한다. 실측된 것은 Run 생성·조회와 Coordinator 바인딩뿐이다. |
+| 명령 근거 | 설치 `1.4.264`의 `agent-context --json` 명령 스키마와 번들 `orchestration` 스킬, Orca `v1.4.264` 릴리스 소스를 대조했다. 항목마다 문서·소스 근거(`DOCUMENTED`·`SOURCE_VERIFIED`)와 실측 상태(`VERIFIED`·`PARTIAL`·`UNVERIFIED`)를 따로 표시한다. 실측은 Run 생성·조회와 Coordinator 바인딩, `worker-start` 인자와 응답, Worker 상태 값(`VERIFIED`), `worker-show` 간략 응답과 실행 표면·인증(`PARTIAL`)이다. 실패 후 처리는 `UNVERIFIED`다. |
 | `worker-start` 구성 | `--spec <작업> [--task-title] --worktree current --agent claude\|codex [--run <id>] [--timeout-ms] --json`. `--from`, `--retry-request`, `--retry-of`, `--terminal`은 넣지 않는다. 실행 표면·계정은 호출별로 지정할 수 없고 Orca 새 에이전트 탭 설정을 따른다. |
-| `worker-start` 응답 | 간략 `--json` 응답의 `dispatchId`·`taskId`·`runId`·`state`·`failedStage`·`lastError`·`next`를 읽는다. `ok`·종료 코드 `0`·`state ready`·Dispatch ID가 모두 있을 때만 시작으로 본다. `failed`(남은 터미널 가능), `outcome_unknown`(턴 시작 미관측 포함), 시간 초과, 빈·해석 불가 응답은 생성 여부 미확인으로 다시 보내지 않는다. Dispatch 기록 전에 거부되는 오류(`no_active_sender_terminal`, `runtime_unavailable` 등)만 시작하지 않은 것으로 본다. |
-| `worker-show` 읽기 | 어댑터가 `worker-show --dispatch <id> --json`을 읽기 명령으로 실행한다(바인딩 불필요). Dispatch가 정산 상태(`succeeded`·`failed`·`stopped`·`abandoned`)이고 liveness가 `exited`일 때만 종료, 정산 전 `live`는 실행 중, 나머지(정산 후 `live`, `unverifiable`, 필드 누락, 알 수 없는 값, 조회 실패·시간 초과)는 미확인이다. |
-| 실행 기록 연결 (FR-05·FR-09) | Worker 시도는 실행기 `orca-worker:<agent>`, 실행 ID `dispatch:<id>`, 응답·조회에서 본 마지막 관측(시각·실행 중·종료·미확인·요약)을 기존 실행 기록에 남긴다. 시작된 Worker의 실행은 열린 채로 두어 보낸 세션이 끝나도 확인 전에는 재전송·재배정·다른 작업 시작을 막는다. 저장된 관측이 종료면 다음 세션이 이어받고, 실행 중이면 `다른 세션 실행 중`, 그 밖은 `실행 상태 확인 필요`다. 로컬 검증의 기록 형식과 동작은 그대로다. |
-| 조회와 확인 | `handoff --observe`가 확인되지 않은 Worker 실행마다 `worker-show`를 읽기 전용 실행기로 실행해 관측을 기록한다. 다시 보내거나 중지하지 않고, 확인 기록은 여전히 `--confirm-stopped`로 사용자가 남긴다. 상태 화면과 `r`은 Orca에 Worker 상태를 묻지 않고 저장된 관측만 표시한다. |
+| `worker-start` 응답 | 간략 `--json` 응답의 `dispatchId`·`taskId`·`runId`·`state`·`mode`·`failedStage`·`lastError`·`next`를 읽는다. `ok`·종료 코드 `0`·`state ready`·사용 가능한 Dispatch ID가 모두 있고, 문자열 필드의 타입이 맞고, 응답의 `runId`가 보낸 `--run`과 다르지 않을 때만 시작으로 본다. Dispatch ID는 형식(접두사·문자 종류)을 가정하지 않고, 비어 있지 않고 공백으로 둘러싸이지 않으며 `-`로 시작하지 않는 출력 가능한 문자열이면 받는다. `failed`(남은 터미널 가능), `outcome_unknown`(턴 시작 미관측 포함), 시간 초과, 빈·해석 불가 응답은 생성 여부 미확인으로 다시 보내지 않는다. Dispatch 기록 전에 거부되는 오류(`no_active_sender_terminal`, `runtime_unavailable` 등)만 시작하지 않은 것으로 본다. |
+| `worker-show` 읽기 | 어댑터가 `worker-show --dispatch <id> --json`을 읽기 명령으로 실행한다(바인딩 불필요, `--full` 없음). 응답이 조회한 Dispatch ID를 돌려주지 않거나, 기록된 Run과 다른 Run을 가리키거나, 필드 타입이 다르면 응답 전체를 거부한다. 작업(정산 상태 `succeeded`·`failed`·`stopped`·`abandoned`), 프로세스(liveness), 터미널(`terminalState`)을 따로 본다. 정산·`exited`·`released`이면 종료, 정산됐지만 `live`이거나 터미널이 아직 `released`가 아니면 `작업 완료·터미널 정리 중`, 정산 전 `live`는 실행 중, 나머지(`unverifiable`, 필드 누락, 알 수 없는 값, 조회 실패·시간 초과)는 미확인이다. |
+| 실행 기록 연결 (FR-05·FR-09) | Worker 시도는 실행기 `orca-worker:<agent>`, 실행 ID `dispatch:<id>`, 보낸 Orca Run(`orca_run`), 응답·조회에서 본 마지막 관측(시각·실행 중·정리 중·종료·미확인·요약)을 기존 실행 기록에 남긴다. 조회가 실패하면 상태를 미확인으로 바꾸고 마지막으로 확인된 관측(`last_seen`)을 함께 남긴다. 시작된 Worker의 실행은 열린 채로 두어 보낸 세션이 끝나도 확인 전에는 재전송·재배정·다른 작업 시작을 막는다. 저장된 관측이 종료면 다음 세션이 이어받고, 실행 중이면 `다른 세션 실행 중`, 정리 중이면 `Worker 작업 완료·터미널 정리 중`, 그 밖은 `실행 상태 확인 필요`다. Orca의 `succeeded`는 작업의 검증 조건 통과나 최종 승인으로 기록하지 않는다. 로컬 검증의 기록 형식과 동작은 그대로다. |
+| 조회와 확인 | `handoff --observe`가 종료가 확인되지 않은 Worker 실행마다 `worker-show`를 읽기 전용 실행기로 한 번 실행해 관측을 기록한다. 종료가 확인된 실행은 다시 조회하지 않는다. 다시 보내거나 중지하지 않고, 확인 기록은 여전히 `--confirm-stopped`로 사용자가 남긴다. 상태 화면과 `r`은 Orca에 Worker 상태를 묻지 않고 저장된 관측만 표시한다. |
 | 전송 전 점검 | `python -m orca_orchestrator.preflight`가 예정 Provider, Coordinator 바인딩, Run(없으면 `--spec`이 새로 만든다는 안내), 4-B 최소 작업 또는 흐름이 고를 작업과 재개 판단, 그대로 보낼 argv(작업 내용은 길이로 표시), 명령 근거, Provider별 4-A 근거(확보·남음), 필요한 승인, 승인·인증·과금·정책·실행 계약·Orca 환경·사용량·작업과 복구별 차단 사유를 출력한다. `status --json`과 조건부 `run-current --json`만 읽기 전용 실행기로 실행하고, `--offline`은 아무것도 실행하지 않으며, `--demo`는 공개 픽스처를 쓴다. 종료 코드는 차단 `1`, 입력 파일 오류 `2`이며 이 빌드에서 `0`은 나오지 않는다. 인증 환경변수는 이름만, 터미널 핸들은 표시하지 않는다. |
-| 제외 | `worker-start`·`worker-stop`·`worker-abandon` 실행, Run 생성, 모델 호출, 인증·과금 설정 변경, Worker 출력 읽기(`worker-read`), 실제 Worker로 확인한 응답·상태 대응 |
+| 제외 | `worker-start`·`worker-stop`·`worker-abandon` 실행, Run 생성, 모델 호출, 인증·과금 설정 변경, Worker 출력 읽기(`worker-read`), `account list` 같은 사용량 조회, 출력 문구나 사용량 표시로 성공·과금을 판정하는 것 |
 
-#### 첫 실환경 Worker 시험에서 확인할 범위 (4-B)
+#### Claude 4-B 실측 반영 (Phase 1)
 
-4-A 통과와 별도 사용자 승인 뒤 Claude 최소 Worker를 한 번만 보낸다. 측정은 같은 Claude 사용량 풀을 쓰는 다른 세션과 분리해 사용자 또는 별도 수행자가 맡는다. 실제 전송 경로는 그때 별도 변경으로 추가한다.
+Claude 4-B는 승인된 격리 환경에서 Step 0 측정 스크립트가 `worker-start`를 한 번 보냈다(재전송 0). 판정은 `PARTIAL`이다. 제품의 어댑터·복구·화면은 이 관측에 맞춰 바꿨고, 가짜 실행기와 데모로 검증했다.
 
-| 항목 | 확인할 내용 |
+| 구분 | 내용 |
 | --- | --- |
-| 실행 전 조건 | 4-A의 Claude 남은 근거(예정 Worker의 실제 구독 인증과 계정 일치, 자동 PTY 작업 전달의 공식 정책 근거, Console/API·클라우드·게이트웨이 경로 배제), 실행 승인 기록, 측정 분리, `preflight`에서 실행 계약 외 차단 사유 없음 |
-| 보낼 작업 | 4-B 최소 작업(파일·명령 없이 지정 문자열 한 줄 반환) 한 번. 실패·미확인이어도 다시 보내지 않음 |
-| 시작 응답 | 실제 `state`·`dispatchId`·`taskId`·`runId`·`mode`·`launch.effective`와 종료 코드가 소스 기준 해석과 맞는지, 실행 표면(PTY·Chat)과 `-p` 여부 |
-| 상태 대응 | `worker-show`의 정산 전 상태 값과 단계, liveness 전이, 종료 후 조회, `worker-list`의 `terminalState` |
-| 복구 | 보낸 세션이 끝난 뒤 다음 세션의 `handoff --observe`가 Dispatch를 다시 찾고 종료를 확인하는지, 확인 전 재전송이 막히는지 |
-| 과금 증거 | 측정 전후 시각(시간대 포함), Claude 공식 사용량 화면의 구독 사용량·Extra usage·크레딧 잔액·자동 충전(사용자 확인), Orca 사용량 출력, Console 결제 변화 없음. 변화가 보이지 않으면 `INCONCLUSIVE` |
+| 실측한 동작 (`VERIFIED`) | `worker-start` 종료 코드 `0`, `ok`, `ready`, `mode` `terminal`, Run·Task·Dispatch ID 반환. 같은 Dispatch가 `succeeded`·`settled`(liveness `live`, 터미널 `reclaimable`)를 거쳐 `succeeded`·`settled`(liveness `exited`, 터미널 `released`)에 도달 |
+| 실측하지 않은 것 | `worker-show`의 간략 `--json` 응답 원문(관측기는 전체 기록을 읽음), Dispatch ID의 실제 형식(기록하지 않음), 실패·시간 초과 경로, `worker_done` 보고 내용과 Worker의 독립된 응답 |
+| `worker-stop` | 구독 인증을 확인하지 못해 한 번 보냈고 `processAction` `none`을 받았다. 이 응답만으로 종료를 확인했다고 보지 않으며, 종료 근거는 뒤이은 `worker-show`의 `exited`·`released`다 |
+| 구독 인증 (`UNVERIFIED`) | 시작 직후 Worker 프로세스의 실행 파일·인자(`-p`/`--print` 여부)·로그인 표시를 수집하지 못했다. 이후 터미널과 기록에서도 확인되지 않았다 |
+| 과금 (`INCONCLUSIVE`) | 공식 사용량 표시가 전후 같았다. 표시 단위 안의 차감이나 다른 과금 경로를 배제하지 못하므로 과금이 없었다고 판정하지 않는다. Orca 쪽 전후 비교 수치는 수집되지 않았다 |
+| 출력 문자열 | 기록에 지정 문자열이 있었지만 작업 지시나 명령의 반복 표시와 구분되지 않았다. 출력에 완료 문구가 있는 것만으로는 성공 증거로 쓰지 않는다 |
+| 정책 근거 | 실험 계정으로 받은 개별 지원 답변은 그 계정의 판단 자료다. 다른 사용자에게 적용되는 허용 근거로 쓰지 않는다 |
+| 아직 검증 필요 | Claude Worker의 실제 구독 인증과 계정 일치, 구독 외 과금 배제, Codex 4-C 전체, Feasibility Gate |
+
+##### 관측기 오류와 재발 방지
+
+| 오류 | 원인 | 이번 변경과 다음 실험 전 수정 |
+| --- | --- | --- |
+| 실제 Dispatch ID를 거부함 | 측정 스크립트가 Dispatch ID에 특정 접두사가 있다고 가정했다. 그 사이 시작 직후 관측(프로세스·인증)을 놓쳤다 | 제품 어댑터는 ID 형식을 가정하지 않고, 비어 있지 않은 안전한 argv 값인지와 조회 응답이 같은 Dispatch·Run을 가리키는지로 검증한다(회귀 테스트). 다음 측정 스크립트도 같은 검사(`is_dispatch_id`와 응답 일치)를 쓰고, ID 검증 실패가 시작 직후 관측을 건너뛰게 하지 않는다 |
+| `account list` 조회 실패 | 측정 스크립트가 orchestration 명령용 옵션(`--environment`)을 `account list`에도 붙였다 | 제품에는 계정·사용량 조회 코드가 없고, 제품의 명령 빌더(`worker_start_args`·`worker_show_args`·Run 명령)는 명령별 인자 목록을 따로 만들어 공통 옵션을 덧붙이지 않는다. 이번 변경에서 계정 조회 코드는 추가하지 않았다. 다음 측정 스크립트는 명령마다 인자 목록을 따로 두고, 실행 전에 설치 CLI의 `--help`나 명령 스키마로 각 인자를 확인하며, 실행 전 조회가 실패하면 기동 전에 멈춘다 |
+
+##### 다음 실환경 시험에서 시작 직후 확보할 관측
+
+다시 시험하려면 새 사용자 승인이 필요하다. 측정은 같은 사용량 풀의 다른 세션과 분리해 사용자 또는 별도 수행자가 맡는다.
+
+| 순서 | 확보할 관측 |
+| --- | --- |
+| 기동 전 | 설치 CLI 버전, 각 명령 인자의 스키마 확인, 비교 가능한 사용량 수치(공식 화면과 Orca 조회 모두 성공해야 기동), 기존 Claude 프로세스 목록 |
+| `worker-start` 응답 직후 | 응답의 Dispatch ID를 형식 검사 없이 받아 `worker-show`(간략 응답 원문을 비식별 저장)로 같은 Dispatch·Run인지 확인 |
+| 같은 시점 | 기동 전 목록에 없던 Worker 프로세스의 실행 파일 이름·인자 플래그(`-p`/`--print` 여부, 값 제외), 터미널 시작 화면의 로그인 표시 유형(구독 플랜과 API 사용량 과금·Console·클라우드 구분) |
+| 진행 중 | `worker-show`의 상태·liveness·터미널 상태 전이와 시각. 정산 후 정리 단계(`reclaimable`·`live`)와 종료(`released`·`exited`)를 따로 기록 |
+| 출력 | Worker의 응답과 `worker_done` 보고를 작업 지시·명령 반복 표시와 구분해 기록 |
+| 종료 후 | 같은 방식의 사용량 수치와 시각. 변화가 표시 단위보다 작으면 `INCONCLUSIVE` |
 
 #### 실제 Worker 연동 뒤 확인할 범위 (FR-05·FR-09)
 
@@ -270,7 +293,7 @@ FR-01·FR-05·FR-06·FR-07·FR-08·FR-09의 첫 구현이다. 사람이 명시�
 
 | 항목 | 확인할 내용 |
 | --- | --- |
-| 실행 ID | 소스 기준으로 `dispatchId`를 실행 ID로 기록한다. 실제 응답에서 이 값이 항상 오는지, 응답이 없거나 시간 초과일 때 생성 여부를 `worker-list`·`inbox` 같은 읽기 명령으로 확인하는 방법 |
+| 실행 ID | `dispatchId`를 실행 ID로 기록한다. 4-B에서는 값이 왔고 같은 Dispatch를 다시 조회할 수 있었다. 응답이 없거나 시간 초과일 때 생성 여부를 `worker-list`·`inbox` 같은 읽기 명령으로 확인하는 방법은 미확인이다 |
 | 상태 대응 | `worker-show`·`agent show`의 상태를 실행 중·종료·미확인으로 옮기는 규칙, `timeout`·`lost`·`stop_unknown`을 미확인으로 다루고 종료나 격리가 확인될 때까지 같은 작업을 다시 배정하지 않는지 |
 | 세션 복구 | 제어 프로그램 재시작·Runtime 재시작 뒤 실행 기록의 ID로 Orca 상태를 다시 조회해 이어갈 수 있는지, 상태 불일치 시 보류되는지 |
 | 중복 방지 | 두 제어 세션이 같은 작업을 요청할 때 Orca 쪽에서도 중복 Dispatch가 생기지 않는지, `--retry-of` 재시도와 새 실행의 구분 |
@@ -320,4 +343,4 @@ https://github.com/surlymochan/swrm
 
 ### 다음 의사결정
 
-제품 연동과 로컬 검증을 이어간다. 첫 실제 Worker 호출 직전에 4-A의 남은 근거를 확보하고 사용자에게 해당 실행을 승인받는다. 실호출 검증 이후 Gate 결과로 Orca 채택과 후속 개발 범위를 확정한다.
+제품 연동과 로컬 검증을 이어간다. 다음 실제 Worker 호출 직전에 4-A의 남은 근거(Claude 구독 인증과 과금 배제 포함)를 확보하고 사용자에게 해당 실행을 승인받는다. 실호출 검증 이후 Gate 결과로 Orca 채택과 후속 개발 범위를 확정한다.

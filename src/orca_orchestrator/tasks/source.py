@@ -209,8 +209,12 @@ DEMO_RESULTS: dict[str, DemoVariant] = {
     "protected": DemoVariant("demo_results_all.json", None, None, "protected", "데모 계획 · 보호 경로 변경"),
     "interrupted": DemoVariant(None, "demo_flow_running.json", None, "current", "데모 계획 · 실행 중 중단",
                                "demo_handoff_interrupted.json"),
-    "worker": DemoVariant("demo_results_passed.json", None, None, "current", "데모 계획 · Worker 종료 미확인",
+    "worker": DemoVariant("demo_results_passed.json", None, None, "current", "데모 계획 · Worker 조회 실패",
                           "demo_handoff_worker.json"),
+    "worker-finishing": DemoVariant("demo_results_passed.json", None, None, "current",
+                                    "데모 계획 · Worker 작업 완료·터미널 정리 중", "demo_handoff_worker_finishing.json"),
+    "worker-exited": DemoVariant("demo_results_passed.json", None, None, "current", "데모 계획 · Worker 종료 확인",
+                                 "demo_handoff_worker_exited.json"),
 }
 
 

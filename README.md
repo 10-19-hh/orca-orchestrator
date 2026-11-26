@@ -27,7 +27,7 @@ Runtime     연결됨 · Orca 1.4.264 (검증 버전)
 바인딩      Coordinator 터미널 바인딩 있음
 현재 Run    run_0123456789ab · Example objective
 작업 전송   보류 · 현재 빌드는 Worker에 작업을 보내지 않음
-Worker 명령 근거 문서·소스 7/7 · 실측 1/7 · 전송 전 점검: preflight 명령
+Worker 명령 근거 문서·소스 7/7 · 실측 4/7·일부 2 · 전송 전 점검: preflight
   보류 이유
   · 실제 작업 전송이 기본값으로 꺼져 있음
   · Worker 실행에 대한 사용자 승인 없음
@@ -36,7 +36,7 @@ Worker 명령 근거 문서·소스 7/7 · 실측 1/7 · 전송 전 점검: pref
   · 구독 포함량만 쓰는 과금 경로 미확인
   · 추가 사용량·크레딧 사용 꺼짐 미확인
   · 자동 충전 꺼짐 미확인
-  · worker-start 계약 미검증 (현재 빌드는 전송하지 않음)
+  · Worker 실행 계약 일부 미검증 (현재 빌드는 전송하지 않음)
 사용량      Claude 미확인 · Codex 미확인
 작업 목록   2개 · 완료 1 · 준비 1 · 데모 계획 · 선행 작업 검증 통과
   T-1  완료       작업 계약 검증 · FR-01 · 검증 1/1 통과
@@ -67,8 +67,8 @@ r 새로고침 · q 종료
 
 `Python 제어 코드 → Orca CLI 어댑터 → Orca Runtime`
 
-- **Orca 어댑터**는 Runtime 상태와 현재 Run을 조회하고, Orca 터미널 바인딩이 있는 경우 Run을 생성할 수 있습니다. Experiment 1은 Orca `1.4.264`에서 `COORDINATOR`의 Run 생성과 바인딩을 확인했습니다. Run은 실행 컨텍스트이며 생성만으로 Worker가 시작되지는 않습니다. Worker Dispatch의 상태는 `worker-show`로 읽습니다(응답 형식은 릴리스 소스 기준이며 아직 실측하지 않았습니다).
-- **Worker 어댑터와 전송 전 점검**은 설치된 Orca `1.4.264`의 명령 스키마와 릴리스 소스에 맞춰 `worker-start` 명령을 구성하고 응답을 해석합니다. 구성한 명령은 `preflight`로 확인만 할 수 있고, 이 빌드에는 보내는 경로가 없습니다. Worker 실행 ID와 상태는 실행 기록에 연결해 재전송과 재배정을 막는 데 씁니다(가짜 실행기로 검증).
+- **Orca 어댑터**는 Runtime 상태와 현재 Run을 조회하고, Orca 터미널 바인딩이 있는 경우 Run을 생성할 수 있습니다. Experiment 1은 Orca `1.4.264`에서 `COORDINATOR`의 Run 생성과 바인딩을 확인했습니다. Run은 실행 컨텍스트이며 생성만으로 Worker가 시작되지는 않습니다. Worker Dispatch의 상태는 `worker-show`로 읽습니다. 간략 `--json` 응답의 필드는 설치된 `1.4.264` CLI 기준이고, 상태 값과 그 순서는 Experiment 4-B에서 Claude Worker 한 번으로 관측했습니다.
+- **Worker 어댑터와 전송 전 점검**은 설치된 Orca `1.4.264`의 명령 스키마와 릴리스 소스에 맞춰 `worker-start` 명령을 구성하고 응답을 해석합니다. 구성한 명령은 `preflight`로 확인만 할 수 있고, 이 빌드에는 보내는 경로가 없습니다. Worker 실행 ID와 상태는 실행 기록에 연결해 재전송과 재배정을 막는 데 씁니다. 4-B에서 관측한 대로 작업 완료, 터미널 정리, 프로세스 종료를 따로 판정합니다(가짜 실행기로 검증).
 - **읽기 전용 상태 화면**은 Runtime 연결·버전, Coordinator 바인딩, 현재 Run, 작업 전송 보류 이유를 한 화면에 보여줍니다. Orca 상태를 바꾸지 않습니다.
 - **작업 목록**은 직접 정의한 작업에 요구사항 ID, 작업 ID, 선행 작업, 검증 조건을 연결합니다. 중복 ID, 없는 선행 작업, 순환 의존성을 오류로 표시하고, 입력된 검증 결과로 작업 상태와 요구사항 충족 여부를 판정합니다.
 - **로컬 검증**은 사용자가 직접 호출할 때 `unit-tests` 검증 조건으로 저장소 단위 테스트를 한 번 실행하고, 종료 코드로 통과·실패를 결과 파일에 기록합니다.
@@ -76,7 +76,7 @@ r 새로고침 · q 종료
 - **변경 검토와 최종 승인**은 검증 결과가 현재 코드(커밋 전 변경 포함)에 맞는지, 작업 정의의 기준 버전 대비 어떤 파일이 바뀌었고 어느 작업에 속하는지, 보호 경로가 바뀌지 않았는지 확인합니다. 승인과 보류는 사용자가 `review` 명령으로만 기록합니다.
 - **인수인계와 중단 후 복구**는 작업을 시작할 때 범위·기준 버전·코드 기준·실행 ID를, 끝나거나 멈출 때 완료한 확인·남은 확인·중단 이유·다음 행동을 기록합니다. 재개 전에 이 기록을 현재 작업 정의·코드·결과와 대조하고, 끝났는지 모르는 실행과 다른 세션이 실행 중인 작업은 다시 실행하지 않습니다.
 - **작업 전송 게이트**는 연결·버전·바인딩·승인·과금 조건과 사용량 대기 상태를 평가합니다. 현재 빌드는 Worker를 시작하거나 작업을 보내지 않습니다.
-- **개발 예정**은 실제 Worker 전송(4-A 통과와 4-B 승인 뒤)과 실환경 상태 제어, 사용량 연동, PRD 문서에서 작업 추출, 단위 테스트 외 검증, 교차 리뷰 증거 연결, 승인 후 병합 연동입니다.
+- **개발 예정**은 실제 Worker 전송(4-A 통과와 Worker 구독 인증·과금 확인 뒤)과 실환경 상태 제어, 사용량 연동, PRD 문서에서 작업 추출, 단위 테스트 외 검증, 교차 리뷰 증거 연결, 승인 후 병합 연동입니다.
 
 ## 로컬 시작
 
@@ -93,7 +93,7 @@ python -c "from orca_orchestrator.orca import OrcaCliAdapter, WorkDispatcher"
 python -m unittest discover -s tests -v
 ```
 
-테스트는 가짜 명령 실행기와 응답 픽스처로 argv 구성, 응답 파싱, 바인딩 누락, 타임아웃 재실행 차단, 전송 차단과 한도 대기, 작업 계약 오류와 선행 작업 검증 결과에 따른 상태 판정, 로컬 검증 실행과 결과 기록, 흐름의 작업 선택·중단·재개와 재확인 판정, 코드 지문과 보호 경로·변경 연결, 승인·보류·재승인 판정, 실행 기록과 재개 판단(다른 세션에서 이어받기, 강제 종료된 세션, 두 세션의 동시 실행, 종료 여부 불명확), Worker 명령 구성과 응답 해석, 승인 누락 시 차단, Worker 응답 누락·알 수 없는 상태·중단 후 중복 전송 차단, 전송 전 점검과 화면 새로고침이 Worker를 기동하지 않는지, 상태 화면의 상황별 표시를 확인합니다. 실행기·변경 비교·세션 테스트에는 로컬 Python 서브프로세스와 임시 Git 저장소를 사용하고, Worker 시작 응답과 상태 조회는 가짜 실행기로 대신합니다. Orca나 모델은 호출하지 않습니다.
+테스트는 가짜 명령 실행기와 응답 픽스처로 argv 구성, 응답 파싱, 바인딩 누락, 타임아웃 재실행 차단, 전송 차단과 한도 대기, 작업 계약 오류와 선행 작업 검증 결과에 따른 상태 판정, 로컬 검증 실행과 결과 기록, 흐름의 작업 선택·중단·재개와 재확인 판정, 코드 지문과 보호 경로·변경 연결, 승인·보류·재승인 판정, 실행 기록과 재개 판단(다른 세션에서 이어받기, 강제 종료된 세션, 두 세션의 동시 실행, 종료 여부 불명확), Worker 명령 구성과 응답 해석, Dispatch ID 형식을 가정하지 않는지와 Dispatch·Run 불일치·필드 타입 오류 거부, Worker 시작 → 작업 완료·터미널 정리 → 종료 전이, 조회 실패 후 마지막 확인 상태 보존, 출력의 완료 문구나 바뀌지 않은 사용량 표시를 증거로 쓰지 않는지, 승인 누락 시 차단, Worker 응답 누락·알 수 없는 상태·중단 후 중복 전송 차단, 전송 전 점검과 화면 새로고침이 Worker를 기동하지 않는지, 상태 화면의 상황별 표시를 확인합니다. 실행기·변경 비교·세션 테스트에는 로컬 Python 서브프로세스와 임시 Git 저장소를 사용하고, Worker 시작 응답과 상태 조회는 가짜 실행기로 대신합니다. Orca나 모델은 호출하지 않습니다.
 
 ## 상태 화면
 
@@ -136,7 +136,7 @@ python -m orca_orchestrator --demo --demo-results failed --once
 python -m orca_orchestrator --demo --demo-results approved --once
 ```
 
-`--demo-results`는 `passed`(기본), `failed`, `none`, `approved`(승인됨), `changed`(승인 후 코드 변경), `protected`(보호 경로 변경), `interrupted`(실행 중 중단), `worker`(Worker 종료 미확인) 중 하나입니다. `failed`는 흐름이 `T-1` 검증 실패로 멈춘 장면이며 작업 목록은 다음과 같습니다.
+`--demo-results`는 `passed`(기본), `failed`, `none`, `approved`(승인됨), `changed`(승인 후 코드 변경), `protected`(보호 경로 변경), `interrupted`(실행 중 중단), `worker`(Worker 상태 조회 실패), `worker-finishing`(Worker 작업 완료·터미널 정리 중), `worker-exited`(Worker 종료 확인) 중 하나입니다. `failed`는 흐름이 `T-1` 검증 실패로 멈춘 장면이며 작업 목록은 다음과 같습니다.
 
 ```text
 작업 목록   2개 · 검증 실패 1 · 대기 1 · 데모 계획 · 선행 작업 검증 실패
@@ -576,7 +576,7 @@ python -m orca_orchestrator.flow @a
 
 ### 재개 판단
 
-- **작업별 상태:** `완료`(현재 작업 정의·코드에 유효한 결과, 다시 실행하지 않음), `이어가기 가능`, `재확인 필요`(기록 후 코드·검증 조건·작업 정의가 바뀜), `검증 실패`, `대기`, `진행 불가`(흐름이 자동 실행할 수 없는 검증 조건), `실행 상태 확인 필요`, `다른 세션 실행 중`으로 나눕니다.
+- **작업별 상태:** `완료`(현재 작업 정의·코드에 유효한 결과, 다시 실행하지 않음), `이어가기 가능`, `재확인 필요`(기록 후 코드·검증 조건·작업 정의가 바뀜), `검증 실패`, `대기`, `진행 불가`(흐름이 자동 실행할 수 없는 검증 조건), `실행 상태 확인 필요`, `다른 세션 실행 중`, `Worker 작업 완료·터미널 정리 중`으로 나눕니다.
 - **실행 상태 확인 필요:** 시간 초과로 멈춘 실행, 그리고 `실행 중`으로 기록됐지만 그 세션이 종료 기록 없이 사라진 실행입니다. 확인이 끝날 때까지 흐름과 `verify`는 그 작업을 다시 실행하거나 다른 세션에 넘기지 않고, 다른 작업도 시작하지 않습니다. `handoff --confirm-stopped <작업> --note "확인한 내용"`으로 사용자가 확인을 기록해야 이어갈 수 있습니다.
 - **한 작업에 한 세션:** 작업을 실행하는 세션은 `<결과 파일>.run-<8자리>.lock`을 잡고 있습니다. 운영체제는 프로세스가 어떻게 끝나든 이 잠금을 풉니다. 그래서 잠금이 풀린 `실행 중` 기록은 끊긴 세션이고, 잠금이 잡혀 있으면 다른 세션이 실행 중입니다. 다른 세션이 같은 작업을 잡으려 하면 시작하지 않습니다(흐름 종료 코드 `6`).
 - **실행 ID:** 로컬 검증은 테스트 프로세스의 `pid`를, Worker 실행은 Orca Dispatch ID를 `dispatch:<id>`로 기록합니다. 확인할 수 없는 실행 ID와 종료 상태는 `미확인`으로 표시합니다. 로컬 프로세스가 아직 도는지는 자동으로 조회하지 않습니다.
@@ -607,25 +607,25 @@ Run         run_0123456789ab · 현재 터미널에 바인딩됨
             구성만 함 · 이 빌드에는 worker-start를 보내는 경로가 없음
 Worker 명령 근거 (문서·소스 / 실측)
   · Run 생성·조회와 Coordinator 바인딩: DOCUMENTED / VERIFIED
-  · worker-start 인자: DOCUMENTED / UNVERIFIED
-  · worker-start 응답: SOURCE_VERIFIED / UNVERIFIED
-  · worker-show 조회: DOCUMENTED / UNVERIFIED
-  · Worker 상태 값: SOURCE_VERIFIED / UNVERIFIED
+  · worker-start 인자: DOCUMENTED / VERIFIED
+  · worker-start 응답: SOURCE_VERIFIED / VERIFIED
+  · worker-show 조회: SOURCE_VERIFIED / PARTIAL
+  · Worker 상태 값: SOURCE_VERIFIED / VERIFIED
   · 실패·미확인 후 처리: DOCUMENTED / UNVERIFIED
-  · Worker 실행 표면·인증: DOCUMENTED / UNVERIFIED
+  · Worker 실행 표면·인증: DOCUMENTED / PARTIAL
 4-A 근거 (Claude) · CONDITIONAL
   · 예정 Worker의 실제 구독 인증: UNVERIFIED
-      확보: 실험 셸의 Claude CLI가 claude.ai 구독 로그인을 표시. Orca Agents 설정은 CLI·Command와 Arguments 기본값·Environment 재정의 없음·System default 프로필 (사용자 확인과 화면 관측)
-      남음: 예정 Worker와 같은 실행 파일·호스트·PTY에서의 유효 인증과, 과금을 확인한 계정과의 일치
+      확보: 실험 셸의 Claude CLI가 claude.ai 구독 로그인을 표시. Orca Agents 설정은 CLI·Command와 Arguments 기본값·Environment 재정의 없음·System default 프로필 (사용자 확인과 화면 관측). 4-B에서 Worker는 mode terminal로 시작·완료·종료했지만 시작 직후 실행 파일·인자·로그인 표시를 수집하지 못함
+      남음: Worker 시작 직후 같은 PTY의 실행 파일·인자(-p/--print 여부)·로그인 표시와, 과금을 확인한 계정과의 일치
   · 해당 자동화의 공식 정책 근거: UNVERIFIED
-      확보: 본인이 공식 비수정 Claude Code CLI에 구독으로 직접 로그인하는 경로는 공식 문서에 있음
-      남음: Orca가 대화형 PTY에 작업을 자동 전달하는 방식이 해당 플랜 약관의 자동화 조건에 맞는다는 공식 문서 또는 Anthropic 지원 답변
+      확보: 본인이 공식 비수정 Claude Code CLI에 구독으로 직접 로그인하는 경로는 공식 문서에 있음. 실험 계정으로 받은 개별 지원 답변은 그 계정의 판단 자료일 뿐 다른 사용자에게 적용되는 근거가 아님
+      남음: Orca가 대화형 PTY에 작업을 자동 전달하는 방식이 해당 플랜 약관의 자동화 조건에 맞는다는 공개 근거
   · 구독 외 과금 배제: INCONCLUSIVE
-      확보: 확인한 계정에서 Extra usage 꺼짐·별도 크레딧 잔액 없음·자동 충전 꺼짐 (사용자 확인)
-      남음: Worker가 그 계정을 쓴다는 근거와 Console/API 키·클라우드 Provider·게이트웨이 경로의 배제
+      확보: 확인한 계정에서 Extra usage 꺼짐·별도 크레딧 잔액 없음·자동 충전 꺼짐 (사용자 확인). 4-B 전후 공식 사용량 표시는 변화 없음 (표시 단위 안의 차감이나 다른 과금 경로를 배제하지 못함)
+      남음: Worker가 그 계정을 쓴다는 근거, 실행 전후 비교 가능한 사용량 수치, Console/API 키·클라우드 Provider·게이트웨이 경로의 배제
 필요한 승인
   · 4-A 통과 (현재 CONDITIONAL): 위 '남음' 항목의 근거
-  · 4-B 실행 승인 (사용자): Claude 최소 Worker 1회 · 없음
+  · 4-B 실행 승인 (사용자): 지난 1회 승인은 실행에 사용됨 (결과 PARTIAL) · 다시 실행하려면 새 승인
   · Claude 사용량 측정 분리: 사용자 또는 별도 수행자 (같은 사용량 풀의 다른 세션과 분리)
   · 실제 전송 경로: 이 빌드에 없음 · 별도 변경과 승인 필요
 차단 사유 8건
@@ -636,7 +636,7 @@ Worker 명령 근거 (문서·소스 / 실측)
   [과금] 자동 충전 꺼짐 미확인
   [정책·과금 검증] Experiment 4-A 통과 전 (현재 CONDITIONAL)
   [Worker 실행 계약] 실제 작업 전송이 기본값으로 꺼져 있음
-  [Worker 실행 계약] worker-start 계약 미검증 (현재 빌드는 전송하지 않음)
+  [Worker 실행 계약] Worker 실행 계약 일부 미검증 (현재 빌드는 전송하지 않음)
 판정: 전송 차단 · 아무것도 보내지 않았습니다.
 ```
 
@@ -649,43 +649,93 @@ Worker 명령 근거 (문서·소스 / 실측)
 | 항목 | 문서·소스 | 실측 | 내용 |
 | --- | --- | --- | --- |
 | Run 생성·조회와 Coordinator 바인딩 | `DOCUMENTED` | `VERIFIED` | Experiment 1에서 Orca 터미널 안의 Python으로 확인 |
-| `worker-start` 인자 | `DOCUMENTED` | `UNVERIFIED` | `(--task \| --spec \| --spec-file) (--agent \| --terminal) [--worktree] [--run] [--retry-of] [--timeout-ms] [--json]`. 호출별 실행 표면·계정·Provider 인자와 `--dry-run`이 없음 (설치 `1.4.264`의 `agent-context` 명령 스키마) |
-| `worker-start` 응답 | `SOURCE_VERIFIED` | `UNVERIFIED` | `--json` 간략 응답 `{ok, result: {dispatchId, taskId, runId, state, failedStage, lastError, next}}`. `ready`와 턴 시작 미관측은 종료 코드 `0`, `failed`·`outcome_unknown`은 `1` (릴리스 `v1.4.264` 소스) |
-| `worker-show` 조회 | `DOCUMENTED` | `UNVERIFIED` | `worker-show --dispatch <id> --json`, 간략 응답 `{dispatchId, taskId, runId, state, stage, liveness, terminalState, lastError, next}` |
-| Worker 상태 값 | `SOURCE_VERIFIED` | `UNVERIFIED` | 정산 상태 `succeeded`·`failed`·`stopped`·`abandoned`, liveness `live`·`exited`·`unverifiable`. 정산 전 상태 값의 전체 목록은 확인하지 못함 |
-| 실패·미확인 후 처리 | `DOCUMENTED` | `UNVERIFIED` | 실패한 `worker-start`는 다시 실행하지 않음. 무응답·시간 초과·`unverifiable`은 종료 증거가 아님 (설치 `orchestration` 스킬 안내) |
-| Worker 실행 표면·인증 | `DOCUMENTED` | `UNVERIFIED` | 새 에이전트 탭 설정을 따르고 호출 셸 환경을 넘기지 않음. 기동 전에 실제 표면·인증을 조회하는 공개 명령이 없음 |
+| `worker-start` 인자 | `DOCUMENTED` | `VERIFIED` | `(--task \| --spec \| --spec-file) (--agent \| --terminal) [--worktree] [--run] [--retry-of] [--timeout-ms] [--json]`. 호출별 실행 표면·계정·Provider 인자와 `--dry-run`이 없음 (설치 `1.4.264`의 `agent-context` 명령 스키마). 4-B에서 `--spec`·`--task-title`·`--worktree current`·`--agent claude`·`--run`·`--timeout-ms`·`--json` 조합을 한 번 실행 |
+| `worker-start` 응답 | `SOURCE_VERIFIED` | `VERIFIED` | `--json` 간략 응답 `{ok, result: {dispatchId, taskId, runId, state, mode, failedStage, lastError, next}}`. `ready`와 턴 시작 미관측은 종료 코드 `0`, `failed`·`outcome_unknown`은 `1`. 4-B에서 종료 코드 `0`, `ready`, `mode` `terminal`과 Run·Task·Dispatch ID를 관측 (ID 형식은 기록하지 않음) |
+| `worker-show` 조회 | `SOURCE_VERIFIED` | `PARTIAL` | `worker-show --dispatch <id> --json`은 `--full` 없이 간략 응답 `{dispatchId, taskId, runId, state, stage, liveness, terminalState, lastError, next}`을 냄 (설치 `1.4.264` CLI). 4-B 관측기는 같은 Dispatch의 전체 기록을 읽었고 간략 응답 원문은 남지 않음 |
+| Worker 상태 값 | `SOURCE_VERIFIED` | `VERIFIED` | 정산 상태 `succeeded`·`failed`·`stopped`·`abandoned`, liveness `live`·`exited`·`unverifiable`. 4-B 관측 순서: `ready`(liveness `live`·터미널 `active`) → `succeeded`·`settled`(`live`·`reclaimable`) → `succeeded`·`settled`(`exited`·`released`) |
+| 실패·미확인 후 처리 | `DOCUMENTED` | `UNVERIFIED` | 실패한 `worker-start`는 다시 실행하지 않음. 무응답·시간 초과·`unverifiable`은 종료 증거가 아님 (설치 `orchestration` 스킬 안내). 4-B에서는 실패 경로가 나오지 않음 |
+| Worker 실행 표면·인증 | `DOCUMENTED` | `PARTIAL` | 새 에이전트 탭 설정을 따르고 호출 셸 환경을 넘기지 않음. 4-B에서 `mode` `terminal`은 관측했지만 실행 파일·인자·구독 인증은 확인하지 못함 |
 
 ### Worker 상태와 복구
 
-Worker 실행도 로컬 검증과 같은 실행 기록과 재개 판단을 씁니다. 아래 규칙은 가짜 실행기로 검증했고, 실제 Worker로는 아직 확인하지 않았습니다.
+Worker 실행도 로컬 검증과 같은 실행 기록과 재개 판단을 씁니다. 상태 판정은 Experiment 4-B에서 관측한 순서에 맞췄고, 아래 동작은 가짜 실행기와 [예시 응답 픽스처](src/orca_orchestrator/fixtures/worker_lifecycle_1.4.264.json)로 검증합니다.
 
-- **기록:** `worker-start` 응답의 `dispatchId`를 실행 ID `dispatch:<id>`로, 응답과 `worker-show`에서 본 상태를 `마지막 관측`으로 남깁니다. 기록하는 쪽은 Orca 출력 원문을 복사하지 않습니다.
-- **종료로 보는 경우:** `worker-show`에서 Dispatch가 정산 상태이고 liveness가 `exited`일 때만입니다. 정산 전 `live`는 `실행 중`, 그 밖(정산됐지만 프로세스가 살아 있음, `unverifiable`, 필드 누락, 알 수 없는 값, 조회 실패·시간 초과)은 `종료 미확인`입니다.
-- **다시 보내지 않는 경우:** `worker-start`가 시간 초과·응답 누락·해석할 수 없는 응답·`failed`·`outcome_unknown`으로 끝났거나, 보낸 세션이 끊겼거나, Worker가 실행 중이거나 종료가 확인되지 않으면 같은 작업을 다시 보내거나 다른 세션에 넘기지 않습니다. Dispatch가 생기기 전에 거부된 경우(`no_active_sender_terminal` 등)만 시작하지 않은 것으로 봅니다.
-- **확인:** `python -m orca_orchestrator.handoff --tasks ... --results ... --observe`가 확인되지 않은 Worker 실행마다 `worker-show`(읽기 전용)를 실행해 관측을 기록합니다. 다시 보내거나 중지하지 않습니다. 조회로 종료가 확인되지 않으면 Orca에서 직접 확인한 뒤 `--confirm-stopped`로 기록합니다.
+- **기록:** `worker-start` 응답의 `dispatchId`를 실행 ID `dispatch:<id>`로, 보낸 Run을 `orca_run`으로, 응답과 `worker-show`에서 본 상태를 `관측`으로 남깁니다. Orca 출력 원문은 복사하지 않습니다.
+- **Dispatch ID:** 형식(접두사·문자 종류)을 가정하지 않습니다. 비어 있지 않고 공백으로 둘러싸이지 않으며 `-`로 시작하지 않는 출력 가능한 문자열이면 받습니다. 대신 `worker-show` 응답이 조회한 Dispatch ID를 그대로 돌려주지 않거나, 다른 Run을 가리키거나, 문자열이어야 할 필드의 타입이 다르면 그 응답 전체를 믿지 않습니다.
+- **세 가지 증거:** 작업(Dispatch 정산 상태), 프로세스(liveness), 터미널(`terminalState`)을 따로 봅니다.
 
-`python -m orca_orchestrator --demo --demo-results worker --once`는 Worker를 보낸 세션이 끝난 뒤 상태 조회가 실패한 장면입니다(예시 값).
+  | `worker-show` | 표시 | 재개 판단 |
+  | --- | --- | --- |
+  | 정산 전 · `live` | 실행 중 | 다시 보내지 않고 다시 조회 |
+  | 정산됨 · `live` 또는 터미널이 `released`가 아님 | 작업 완료·터미널 정리 중 | 다시 보내지 않고 정리 후 다시 조회 |
+  | 정산됨 · `exited` · `released` | 종료 확인 | 결과 파일로 판단 (다음 세션이 작업을 잡을 수 있음) |
+  | 그 밖 (`unverifiable`, 필드 누락, 알 수 없는 값) | 종료 미확인 | 사용자가 확인한 뒤 `--confirm-stopped` |
+
+- **조회 실패:** 시간 초과, 오류, 해석할 수 없는 응답, 다른 Dispatch·Run의 응답이면 `종료 미확인`으로 기록하고 마지막으로 확인된 상태를 함께 남깁니다. 화면에 두 가지가 모두 보입니다. 종료가 확인된 실행은 다시 조회하지 않습니다.
+- **작업 검증과 별개:** Orca의 `succeeded`는 Dispatch에 대한 Orca의 보고입니다. 작업의 검증 조건 통과나 최종 승인으로 기록하지 않습니다. 출력에 완료 문구가 있어도 증거로 쓰지 않습니다.
+- **다시 보내지 않는 경우:** `worker-start`가 시간 초과·응답 누락·해석할 수 없는 응답·`failed`·`outcome_unknown`·Run 불일치로 끝났거나, 보낸 세션이 끊겼거나, Worker가 실행 중·정리 중이거나 종료가 확인되지 않으면 같은 작업을 다시 보내거나 다른 세션에 넘기지 않습니다. Dispatch가 생기기 전에 거부된 경우(`no_active_sender_terminal` 등)만 시작하지 않은 것으로 봅니다.
+- **확인:** `python -m orca_orchestrator.handoff --tasks ... --results ... --observe`가 종료가 확인되지 않은 Worker 실행마다 `worker-show`(읽기 전용)를 한 번 실행해 관측을 기록합니다. 다시 보내거나 중지하지 않습니다. 조회로 종료가 확인되지 않으면 Orca에서 직접 확인한 뒤 `--confirm-stopped`로 기록합니다.
+
+데모로 세 장면을 볼 수 있습니다(예시 값, Orca 호출 없음).
+
+```powershell
+python -m orca_orchestrator --demo --demo-results worker-finishing --once   # 작업 완료·터미널 정리 중
+python -m orca_orchestrator --demo --demo-results worker-exited --once      # 종료 확인
+python -m orca_orchestrator --demo --demo-results worker --once             # 조회 실패 · 마지막 확인 상태 표시
+```
+
+가짜 실행기로 `worker-start` 한 번 → `handoff --observe` 네 번(실행 중 → 정리 중 → 정리 중 → 종료 확인)을 거치는 흐름은 `$env:PYTHONPATH = "src;tests"` 뒤 `python -m unittest test_workers.LifecycleTest -v`로 재현합니다. Orca나 모델은 호출하지 않습니다.
+
+`worker-finishing`의 재개 부분입니다. 작업은 끝났지만 터미널이 아직 정리되지 않아 다시 보내지 않습니다.
+
+```text
+다음 작업   보류 · T-2 Worker 작업 완료·터미널 정리 중 (재개 참고)
+재개        Worker 작업 완료·터미널 정리 중 · T-2 · 실행 ID dispatch:example-di…
+마지막 실행 T-2 · 작업 완료·터미널 정리 중 (Orca 조회) · 시작 11-26 20:31:00 · …
+  실행 ID dispatch:example-dispatch-4b · 작업 완료·터미널 정리 중
+  관측 11-26 20:40:00 · 작업 완료·터미널 정리 중
+    작업 succeeded(settled) · 프로세스 live · 터미널 reclaimable
+  확인 완료 없음 · 남은 확인 screen-tests
+  다음 행동: 정리가 끝나기를 기다린 뒤 handoff --observe로 다시 조회
+```
+
+`worker-exited`에서는 종료가 확인되어 실행 기록이 더 이상 재개를 막지 않습니다. Worker의 성공과 별개로 `T-2`는 검증 조건 `screen-tests`의 결과가 없어 `준비` 상태이고(흐름이 자동 실행하지 않는 조건이라 `진행할 수 없음`), 최종 승인도 보류됩니다.
+
+```text
+다음 작업   없음 · T-2: 자동 실행할 수 없는 검증 조건 screen-tests
+재개        진행할 수 없음 · T-2: 자동 실행할 수 없는 검증 조건 screen-tests
+마지막 실행 T-2 · 종료 확인 (Orca 조회) · 시작 11-26 20:31:00 · 세션 s-4d5e6f70
+  실행 ID dispatch:example-dispatch-4b · 종료 확인
+  관측 11-26 20:44:00 · 종료 확인
+    작업 succeeded(settled) · 프로세스 exited · 터미널 released
+  확인 완료 없음 · 남은 확인 screen-tests
+  다음 행동: T-2: 흐름이 자동 실행하는 검증 조건은 unit-tests뿐임
+```
+
+`worker`는 정리 중이던 Worker를 다시 조회하다 실패한 장면입니다. 지금 확인할 수 없는 항목과 마지막으로 확인한 상태가 함께 나옵니다.
 
 ```text
 다음 작업   보류 · T-2 실행 상태 확인 필요 (재개 참고)
-재개        실행 상태 확인 필요 · T-2 · worker 시작됨 (ready) · 종료 미확인
+재개        실행 상태 확인 필요 · T-2 · worker 시작됨 (ready · terminal) · 종료…
 마지막 실행 T-2 · 종료 미확인 · 시작 11-26 20:31:00 · 세션 s-4d5e6f70
-  실행 ID dispatch:dsp_example01 · 종료 미확인
-  관측 11-26 20:52:00 · 종료 미확인 · worker-show 조회 실패 (outcome_unknown)
+  실행 ID dispatch:example-dispatch-4b · 종료 미확인
+  관측 11-26 20:52:00 · 종료 미확인
+    worker-show 조회 실패 (outcome_unknown) · 확인 불가: 작업·프로세스·터미널
+  마지막 확인 11-26 20:40:00 · 작업 완료·터미널 정리 중
+    작업 succeeded(settled) · 프로세스 live · 터미널 reclaimable
   확인 완료 없음 · 남은 확인 screen-tests
   다음 행동: handoff --observe로 상태 조회 · 종료 확인 전 다시 보내지 않음
 ```
 
-### 첫 실환경 시험 전에
+### 4-B 결과와 다음 실환경 시험
 
-Experiment 4-B(Claude 최소 Worker 1회)는 4-A 통과와 별도 사용자 승인 뒤에만 진행합니다. 실제 전송 경로는 그때 따로 추가합니다. Claude 측정은 같은 Claude 사용량 풀을 쓰는 다른 세션과 분리해 사용자 또는 별도 수행자가 맡습니다. 확인할 범위는 [PRD](docs/PRD.md#첫-실환경-worker-시험에서-확인할-범위-4-b)에 있습니다.
+Claude 4-B는 승인된 1회 실행을 마쳤고 판정은 `PARTIAL`입니다. Worker의 시작·작업 완료·종료는 확인했고, 실제 구독 인증은 확인하지 못했으며(`UNVERIFIED`), 공식 사용량 표시가 전후 같았다는 것만으로 과금 여부를 판정할 수 없습니다(`INCONCLUSIVE`). 실제 전송 경로는 이 빌드에 없고, 다시 실행하려면 새 승인이 필요합니다. 다음 시험에서 확인할 범위는 [PRD](docs/PRD.md#claude-4-b-실측-반영-phase-1)에 있습니다.
 
 ## 구독과 과금
 
 실제 실행을 승인하기 전, 사용자가 공식 Claude Code·Codex CLI에서 자기 구독으로 로그인하고 해당 경로의 **추가 사용과 자동 충전을 꺼 둡니다**. 기본 정책은 구독에 포함된 사용량만 쓰는 것입니다. 프로그램에 한도 도달이 기록되면 리셋을 기다립니다. 초기화 시각이 불명확하면 대기를 유지하고, 시각이 지나면 새 사용량 관측으로 여유를 확인한 후 대기를 해제합니다. API 키로 자동 전환하거나 추가 크레딧을 구매하지 않습니다.
 
-Worker 작업 전송에는 실제 실행 경로의 구독 인증, 구독 외 과금 배제, 해당 자동화 방식에 적용되는 공식 정책 근거 및 별도 사용자 승인이 필요합니다. 현재 Step 0의 4-A는 `CONDITIONAL`이며 4-B·4-C와 Feasibility Gate는 보류 상태입니다. Provider별로 확보한 근거와 남은 근거는 `preflight`의 `4-A 근거`에 나옵니다.
+Worker 작업 전송에는 실제 실행 경로의 구독 인증, 구독 외 과금 배제, 해당 자동화 방식에 적용되는 공식 정책 근거 및 별도 사용자 승인이 필요합니다. 현재 Step 0의 4-A는 `CONDITIONAL`입니다. Claude 4-B는 한 번 실행해 `PARTIAL`(Worker 시작·완료·종료 확인, 구독 인증 미확인, 과금 판정 불가)이고, Codex 4-C와 Feasibility Gate는 보류 상태입니다. Provider별로 확보한 근거와 남은 근거는 `preflight`의 `4-A 근거`에 나옵니다.
 
 ## 개발 현황
 

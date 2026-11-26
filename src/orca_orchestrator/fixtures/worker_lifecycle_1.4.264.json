@@ -1,0 +1,80 @@
+{
+  "description": "테스트용 예시 응답. Experiment 4-B(Orca 1.4.264, Claude Worker 1회)에서 같은 Dispatch에 대해 관측한 상태 값과 순서를 worker-start·worker-show --json 간략 응답 형태로 옮겼다. 간략 응답의 필드 구성은 설치 1.4.264 CLI 번들의 응답 보기에서 확인했다. 실험 기록에는 응답 원문이 남아 있지 않으므로 ID와 taskId·runId 값은 예시이며 실제 ID 형식을 나타내지 않는다. 관측하지 않은 필드(next 문구 등)는 넣지 않았다.",
+  "cli_version": "1.4.264",
+  "observed": [
+    "worker-start: 종료 코드 0, ok, state ready, mode terminal, Run·Task·Dispatch ID 반환",
+    "Worker 목록: ready, liveness live, 터미널 active",
+    "worker-show: succeeded·settled, liveness live, 터미널 reclaimable (두 번)",
+    "worker-show: succeeded·settled, liveness exited, 터미널 released"
+  ],
+  "example_values": [
+    "dispatchId",
+    "taskId",
+    "runId"
+  ],
+  "start": {
+    "exit_code": 0,
+    "json_response": {
+      "ok": true,
+      "result": {
+        "dispatchId": "example-dispatch-4b",
+        "taskId": "example-task-4b",
+        "runId": "run_0123456789ab",
+        "state": "ready",
+        "mode": "terminal"
+      }
+    }
+  },
+  "show": [
+    {
+      "step": "working",
+      "basis": "Worker 목록 관측값을 worker-show 간략 응답 형태로 옮김",
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "dispatchId": "example-dispatch-4b",
+          "taskId": "example-task-4b",
+          "runId": "run_0123456789ab",
+          "state": "ready",
+          "liveness": "live",
+          "terminalState": "active"
+        }
+      }
+    },
+    {
+      "step": "finishing",
+      "basis": "worker-show 관측 1·2회",
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "dispatchId": "example-dispatch-4b",
+          "taskId": "example-task-4b",
+          "runId": "run_0123456789ab",
+          "state": "succeeded",
+          "stage": "settled",
+          "liveness": "live",
+          "terminalState": "reclaimable"
+        }
+      }
+    },
+    {
+      "step": "exited",
+      "basis": "worker-show 관측 3회",
+      "exit_code": 0,
+      "json_response": {
+        "ok": true,
+        "result": {
+          "dispatchId": "example-dispatch-4b",
+          "taskId": "example-task-4b",
+          "runId": "run_0123456789ab",
+          "state": "succeeded",
+          "stage": "settled",
+          "liveness": "exited",
+          "terminalState": "released"
+        }
+      }
+    }
+  ]
+}
