@@ -375,7 +375,7 @@ class TaskScreenTest(unittest.TestCase):
                     self.assertTrue(all(c[1:] in ALLOWED_TAILS for c in runner.calls))
                     self.assertTrue(all(r.display_width(line) <= 80 for line in lines))
                     if scenario == "connected":
-                        self.assertLessEqual(len(lines), 38)
+                        self.assertLessEqual(len(lines), 45)
                         self.assertFalse(any(line.startswith("안내:") for line in lines))
 
     def test_invalid_plan_lists_issues_and_judges_nothing(self):
@@ -540,8 +540,8 @@ class LayoutTest(unittest.TestCase):
         for variant in DEMO_RESULTS:
             with self.subTest(variant):
                 snap = demo_snapshot(variant)
-                frame = r.layout(snap, 79, 40)
-                self.assert_frame(frame, 40)
+                frame = r.layout(snap, 79, 48)
+                self.assert_frame(frame, 48)
                 self.assertEqual(frame.lines, r.render(snap, 79))
                 self.assertEqual((frame.offset, frame.max_offset), (0, 0))
                 self.assertEqual(frame.lines[-1], r.FOOTER)
@@ -657,7 +657,7 @@ class ScrollLoopTest(unittest.TestCase):
         self.assertTrue(all(r.display_width(line) <= 59 for line in frames[2]))
 
     def test_short_content_unchanged(self):
-        code, _, _, frames = self.drive([app.DOWN, "q"], lambda: (80, 40), lambda: demo_snapshot("passed"))
+        code, _, _, frames = self.drive([app.DOWN, "q"], lambda: (80, 48), lambda: demo_snapshot("passed"))
         self.assertEqual(frames[0], r.render(demo_snapshot("passed"), 79))
         self.assertEqual(frames[0], frames[1])  # nothing to scroll
 

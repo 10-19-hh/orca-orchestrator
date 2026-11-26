@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Callable, Iterator, Mapping
 
 from ..orca.dispatch import AUTH_ENV_NAMES
-from ..orca.runner import CommandLaunchError, CommandResult, CommandRunner, CommandTimeout, SubprocessRunner
+from ..orca.runner import CommandLaunchError, CommandResult, CommandRunner, CommandTimeout, TrackedSubprocessRunner
 from .codebase import GitReader, code_basis, scope_text, source_state
 from .contract import (
     RESULTS_SCHEMA,
@@ -48,11 +48,11 @@ from .contract import (
     parse_results,
     validate,
 )
+from .locks import LockTimeout, exclusive
 from .paths import lock_path, tool_files
 
 DEFAULT_TIMEOUT_SECONDS = 600.0
 DEFAULT_LOCK_TIMEOUT_SECONDS = 30.0
-LOCK_POLL_SECONDS = 0.05
 REPLACE_ATTEMPTS = 5  # a reader holding the file open can briefly block os.replace on Windows
 # Removed from the child environment: model credentials and the Orca terminal binding.
 STRIPPED_ENV_NAMES = frozenset(
@@ -98,6 +98,14 @@ class VerificationNotCompleted(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
+
+
+class VerificationTimedOut(VerificationNotCompleted):
+    """The command was stopped at the time limit; whether everything it started ended is not confirmed."""
+
+
+class VerificationNotStarted(VerificationNotCompleted):
+    """The command could not be started."""
 
 
 class VerificationNotRecorded(VerificationNotCompleted):
@@ -204,10 +212,6 @@ def write_json(path: Path, document: object) -> None:
         raise
 
 
-class LockTimeout(Exception):
-    pass
-
-
 @contextmanager
 def results_lock(results_path: Path, timeout: float = DEFAULT_LOCK_TIMEOUT_SECONDS) -> Iterator[None]:
     """Exclusive lock shared by every process saving to ``results_path``.
@@ -216,46 +220,8 @@ def results_lock(results_path: Path, timeout: float = DEFAULT_LOCK_TIMEOUT_SECON
     releases it automatically. The companion file is left in place.
     """
 
-    fd = os.open(lock_path(results_path), os.O_RDWR | os.O_CREAT, 0o644)
-    deadline = time.monotonic() + timeout
-    try:
-        if os.name == "nt":
-            import msvcrt
-
-            def try_lock() -> bool:
-                os.lseek(fd, 0, os.SEEK_SET)
-                try:
-                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-                    return True
-                except OSError:
-                    return False
-
-            def unlock() -> None:
-                os.lseek(fd, 0, os.SEEK_SET)
-                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-        else:
-            import fcntl
-
-            def try_lock() -> bool:
-                try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    return True
-                except OSError:
-                    return False
-
-            def unlock() -> None:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-
-        while not try_lock():
-            if time.monotonic() >= deadline:
-                raise LockTimeout
-            time.sleep(LOCK_POLL_SECONDS)
-        try:
-            yield
-        finally:
-            unlock()
-    finally:
-        os.close(fd)
+    with exclusive(lock_path(results_path), timeout):
+        yield
 
 
 def current_digest(plan: TaskPlan, result: VerificationResult) -> str | None:
@@ -398,30 +364,79 @@ def verify(
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     lock_timeout: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
     environ: Mapping[str, str] | None = None,
-    runner_factory: Callable[[dict[str, str]], CommandRunner] = SubprocessRunner,
+    runner_factory: Callable[[dict[str, str]], CommandRunner] = TrackedSubprocessRunner,
     python: str | None = None,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     git: GitReader | None = None,
+    claim=None,
 ) -> VerificationRun:
+    """Runs one check once and records it.
+
+    ``claim`` is the caller's hold on the task (the flow keeps one per task);
+    without it this call takes the task itself, so a task another session is
+    running, or whose last run's end is unconfirmed, is refused before anything
+    runs (``handoff.ClaimRefused``). Each run's start, executor run ID and end
+    are written to the handoff record.
+    """
+
+    from .handoff import RunEnd, claim_task  # handoff imports this module
+
     plan_path, results_path, repo = Path(plan_path), Path(results_path), Path(repo).resolve()
-    _, command, digest = prepare(plan_path, results_path, task_id, check_id, repo)
+    plan, command, digest = prepare(plan_path, results_path, task_id, check_id, repo)
     own_files = tool_files(plan_path, results_path)
     before = source_state(repo, own_files)
     if before.digest is None:
         raise VerificationSetupError(before.error or "검증 대상 파일을 확인할 수 없음")
     basis = code_basis(repo, own_files, git)
-
     python = python if python is not None else sys.executable
     if not python:
-        raise VerificationNotCompleted("Python 실행 파일 경로를 알 수 없어 실행하지 못함")
+        raise VerificationSetupError("Python 실행 파일 경로를 알 수 없어 실행하지 않음")
+
+    def execute(held) -> VerificationRun:
+        held.run_started(check_id)
+        try:
+            run = _execute(plan_path, results_path, task_id, check_id, repo, command, digest, before, basis,
+                           own_files, python, timeout, lock_timeout, environ, runner_factory, now,
+                           lambda pid: held.executor_started(check_id, f"pid:{pid}"))
+        except VerificationTimedOut as exc:
+            held.run_ended(check_id, RunEnd.UNKNOWN, message=exc.message)
+            raise
+        except VerificationNotStarted as exc:
+            held.run_ended(check_id, RunEnd.NOT_STARTED, message=exc.message)
+            raise
+        except VerificationNotRecorded as exc:
+            held.run_ended(check_id, RunEnd.EXITED, exit_code=exc.result.exit_code, message=exc.message)
+            raise
+        except VerificationNotCompleted as exc:
+            held.run_ended(check_id, RunEnd.EXITED, message=exc.message)
+            raise
+        except BaseException as exc:
+            held.run_ended(check_id, RunEnd.UNKNOWN, message=f"중단됨 ({type(exc).__name__}) · 테스트 프로세스 종료 미확인")
+            raise
+        held.run_ended(check_id, RunEnd.EXITED, outcome=run.result.outcome.value, exit_code=run.result.exit_code,
+                       message=run.summary, result_ref=f"{results_path.name}#{task_id}/{check_id}")
+        return run
+
+    if claim is not None:
+        return execute(claim)
+    with claim_task(plan_path, results_path, plan, task_id, (check_id,), repo=repo, source=before, basis=basis,
+                    lock_timeout=lock_timeout, now=now) as held:
+        return execute(held)
+
+
+def _execute(plan_path, results_path, task_id, check_id, repo, command, digest, before, basis, own_files, python,
+             timeout, lock_timeout, environ, runner_factory, now, on_start) -> VerificationRun:
     runner = runner_factory(child_environment(repo, os.environ if environ is None else environ))
     started = now()
+    extra = {"on_start": on_start} if getattr(runner, "reports_start", False) else {}
     try:  # no lock is held while the tests run
-        output = runner.run(command.argv(python), timeout=timeout, cwd=str(repo))
+        output = runner.run(command.argv(python), timeout=timeout, cwd=str(repo), **extra)
     except CommandTimeout:
-        raise VerificationNotCompleted(f"제한 시간 {timeout:g}초 안에 끝나지 않음") from None
+        raise VerificationTimedOut(
+            f"제한 시간 {timeout:g}초 초과 · 하위 프로세스 종료 미확인"
+        ) from None
     except CommandLaunchError as exc:
-        raise VerificationNotCompleted(f"실행하지 못함 ({exc})") from None
+        raise VerificationNotStarted(f"실행하지 못함 ({exc})") from None
 
     after = source_state(repo, own_files)
     if after.digest != before.digest:

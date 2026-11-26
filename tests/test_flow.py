@@ -30,6 +30,7 @@ from orca_orchestrator.tasks.flow import (
     trace_lines,
     write_flow_status,
 )
+from orca_orchestrator.tasks.handoff import confirm_stopped
 from orca_orchestrator.tasks.verification import results_lock, verify
 from orca_orchestrator.orca.runner import CommandTimeout
 from orca_orchestrator.tui import render as r
@@ -196,12 +197,18 @@ class ResumeTest(unittest.TestCase):
 
     def test_resume_after_interrupted_run(self):
         ws = Workspace(self, plan=chain_plan())
-        flow(ws, Scripted({"T-2": CommandTimeout("t")}))
-        # A crash can leave a "running" status behind; the next run simply replaces it.
+        report = flow(ws, Scripted({"T-2": CommandTimeout("t")}))
+        self.assertIn("실행 상태 확인 필요로 기록함", report.stop.message)
+        # A crash can leave a "running" status behind; the screen says the session is gone.
         write_flow_status(flow_status_path(ws.results),
                           FlowStatus("running", "2026-11-26T11:00:00Z", ("T-2", "unit-tests", "2026-11-26T11:00:00Z")))
         board = FileTaskSource(ws.plan, ws.results).load()
-        self.assertIn("실행 중 · T-2/unit-tests", r.flow_text(board))
+        self.assertTrue(r.flow_text(board).startswith("중단 (세션 종료) · T-2/unit-tests"), r.flow_text(board))
+        # The timed-out run's end is unknown: nothing runs until the person confirms it stopped.
+        blocked = Scripted({})
+        report = flow(ws, blocked)
+        self.assertEqual((report.stop.kind, report.stop.task_id, blocked.calls), (StopKind.UNRESOLVED, "T-2", []))
+        confirm_stopped(ws.results, "T-2", "테스트 프로세스 종료 확인")
         script = Scripted({})
         report = flow(ws, script)
         self.assertEqual((tasks_called(script), report.stop.kind), (["T-2", "T-3"], StopKind.DONE))

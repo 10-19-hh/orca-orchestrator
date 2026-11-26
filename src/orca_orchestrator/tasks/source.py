@@ -20,7 +20,10 @@ from .contract import PlanFormatError, PlanIssue, TaskPlan, parse_plan, parse_re
 from .flow import FlowStatus, FlowStatusError, FlowView, parse_flow_status, select
 from .paths import approval_path, flow_status_path, tool_files
 from .progress import PlanProgress, evaluate
-from .review import CodeState, Review, build_review, parse_approval_text, read_code
+from .handoff import ResumeView, blocked_map, parse_handoff_text, reconcile
+from .locks import is_held
+from .paths import handoff_path, run_lock_path
+from .review import CodeState, Review, build_review, parse_approval_text, read_code, run_blockers
 
 
 class BoardState(str, Enum):
@@ -41,6 +44,7 @@ class TaskBoard:
     flow: FlowStatus | None = None  # what the last flow run recorded, if any
     flow_error: str | None = None  # the flow status file exists but cannot be read
     review: Review | None = None  # code basis, changes and approval, when a repository is known
+    resume: ResumeView | None = None  # handoff record compared with the plan, code and results
 
 
 NOT_CONFIGURED = TaskBoard(BoardState.NOT_CONFIGURED)
@@ -70,8 +74,13 @@ def build_board(plan_text: str, results_text: str | None, label: str, *,
                 plan_name: str = "작업 정의", results_name: str = "검증 결과",
                 flow_text: str | None = None, flow_name: str = "흐름 상태",
                 code: Callable[[TaskPlan], CodeState] | None = None,
-                approval_text: str | None = None, approval_name: str = "승인 기록") -> TaskBoard:
-    """``code`` reads the current code for a plan; without it there is no review."""
+                approval_text: str | None = None, approval_name: str = "승인 기록",
+                handoff_text: str | None = None, handoff_name: str = "실행 기록",
+                live: Callable[[str], bool] = lambda task_id: False) -> TaskBoard:
+    """``code`` reads the current code for a plan; without it there is no review.
+
+    ``live(task_id)`` says whether a session holds the task right now.
+    """
 
     try:
         plan_data = _json(plan_text, plan_name)
@@ -82,16 +91,21 @@ def build_board(plan_text: str, results_text: str | None, label: str, *,
     issues = validate(plan, results)
     if issues:
         return TaskBoard(BoardState.INVALID, label, issues=issues)
+    digest = plan_digest(plan_data)
+    state = code(plan) if code is not None else None
+    progress = evaluate(plan, results, state.source if state else None)
+    view = select(plan, progress)
+    attempts, handoff_error = parse_handoff_text(handoff_text, handoff_name)
+    resume = reconcile(plan, progress, attempts, next_task=view.next.task_id if view.next else None, live=live,
+                       digest=digest, source=state.source if state else None, error=handoff_error,
+                       blocked=blocked_map(view.blockers))
     review = None
-    if code is not None:
+    if state is not None:
         record, record_error = parse_approval_text(approval_text, approval_name)
-        review = build_review(plan, plan_digest(plan_data), results, code(plan), record, record_error)
-        progress = review.progress
-    else:
-        progress = evaluate(plan, results)
+        review = build_review(plan, digest, results, state, record, record_error, run_blockers(resume))
     flow, flow_error = _flow(flow_text, flow_name)
-    return TaskBoard(BoardState.OK, label, progress=progress, view=select(plan, progress),
-                     flow=flow, flow_error=flow_error, review=review)
+    return TaskBoard(BoardState.OK, label, progress=progress, view=view,
+                     flow=flow, flow_error=flow_error, review=review, resume=resume)
 
 
 def _read_optional(path: Path) -> str | None:
@@ -128,12 +142,20 @@ class FileTaskSource:
     def load(self) -> TaskBoard:
         try:
             plan_text = self._read(self.plan_path)
-            results_text = self._read(self.results_path) if self.results_path else None
+            # a results file that does not exist yet means no results (as verify and flow read it)
+            results_text = self._read(self.results_path) if self.results_path and self.results_path.exists() else None
         except PlanFormatError as exc:
             return TaskBoard(BoardState.UNREADABLE, self.label, error=str(exc))
         flow_text, flow_name = None, "흐름 상태"
         approval_text, approval_name = None, "승인 기록"
+        handoff_text, handoff_name = None, "실행 기록"
+        live = lambda task_id: False  # noqa: E731
         if self.results_path is not None:
+            results = self.results_path
+            handoff = handoff_path(results)
+            handoff_name = handoff.name
+            handoff_text = _read_optional(handoff)
+            live = lambda task_id: is_held(run_lock_path(results, task_id))  # noqa: E731
             flow_path = flow_status_path(self.results_path)
             flow_name = flow_path.name
             flow_text = _read_optional(flow_path)
@@ -155,6 +177,9 @@ class FileTaskSource:
             code=code,
             approval_text=approval_text,
             approval_name=approval_name,
+            handoff_text=handoff_text,
+            handoff_name=handoff_name,
+            live=live,
         )
 
 
@@ -169,10 +194,12 @@ class DemoVariant:
     approval: str | None  # decision fixture
     code: str  # key in demo_code.json: the repository state this scene shows
     label: str
+    handoff: str | None = None  # execution record fixture (no session is ever live in the demo)
 
 
 DEMO_RESULTS: dict[str, DemoVariant] = {
-    "passed": DemoVariant("demo_results_passed.json", None, None, "current", "데모 계획 · 선행 작업 검증 통과"),
+    "passed": DemoVariant("demo_results_passed.json", None, None, "current", "데모 계획 · 선행 작업 검증 통과",
+                          "demo_handoff_passed.json"),
     "failed": DemoVariant("demo_results_failed.json", "demo_flow_failed.json", None, "current",
                           "데모 계획 · 선행 작업 검증 실패"),
     "none": DemoVariant(None, None, None, "current", "데모 계획 · 검증 결과 없음"),
@@ -180,6 +207,8 @@ DEMO_RESULTS: dict[str, DemoVariant] = {
     "changed": DemoVariant("demo_results_all.json", None, "demo_approval.json", "changed",
                            "데모 계획 · 승인 후 코드 변경"),
     "protected": DemoVariant("demo_results_all.json", None, None, "protected", "데모 계획 · 보호 경로 변경"),
+    "interrupted": DemoVariant(None, "demo_flow_running.json", None, "current", "데모 계획 · 실행 중 중단",
+                               "demo_handoff_interrupted.json"),
 }
 
 
@@ -217,4 +246,6 @@ class DemoTaskSource:
                            flow_text=_fixture_text(v.flow) if v.flow else None, flow_name=v.flow or "흐름 상태",
                            code=lambda plan: state,
                            approval_text=_fixture_text(v.approval) if v.approval else None,
-                           approval_name=v.approval or "승인 기록")
+                           approval_name=v.approval or "승인 기록",
+                           handoff_text=_fixture_text(v.handoff) if v.handoff else None,
+                           handoff_name=v.handoff or "실행 기록")

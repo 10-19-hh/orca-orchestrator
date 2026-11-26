@@ -8,7 +8,7 @@ Two facts are kept apart.
   two working trees at the same HEAD with different edits get different
   digests. Caches (``__pycache__``, ``*.pyc``), hidden files and folders, and
   the tool's own files (plan, results and their ``.lock``/``.flow.json``/
-  ``.approval.json`` companions, ``*.tmp``) are skipped, so running tests or
+  ``.approval.json``/``.handoff.json`` companions, run locks, ``*.tmp``) are skipped, so running tests or
   saving results never expires a result.
 * The **change set** lists files that differ from the plan's ``base``
   revision: tracked files changed in the working tree (committed or not) and
@@ -29,11 +29,11 @@ from typing import Iterable
 from ..orca.dispatch import AUTH_ENV_NAMES
 from ..orca.runner import CommandLaunchError, CommandRunner, CommandTimeout, SubprocessRunner
 from .contract import CHECK_DIGEST_LENGTH
+from .paths import is_tool_file_name
 
 VERIFICATION_SCOPE = ("src", "tests")
 CACHE_DIRS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"})
 CACHE_SUFFIXES = (".pyc", ".pyo")
-TOOL_SUFFIXES = (".json.lock", ".flow.json", ".approval.json", ".tmp")
 GIT_TIMEOUT_SECONDS = 15.0
 
 
@@ -86,7 +86,7 @@ def source_state(repo: str | Path, exclude: Iterable[Path] = ()) -> SourceState:
                 dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and d not in CACHE_DIRS)
                 rel_dir = Path(dirpath).relative_to(repo).as_posix()
                 for name in sorted(filenames):
-                    if name.startswith(".") or name.endswith(CACHE_SUFFIXES + TOOL_SUFFIXES):
+                    if name.startswith(".") or name.endswith(CACHE_SUFFIXES) or is_tool_file_name(name):
                         continue
                     rel = f"{rel_dir}/{name}"
                     if rel in skipped:
@@ -189,7 +189,7 @@ class ChangeSet:
 def _ignored_change(path: str, skipped: frozenset[str]) -> bool:
     parts = path.split("/")
     return (path in skipped or any(p in CACHE_DIRS for p in parts[:-1])
-            or parts[-1].endswith(CACHE_SUFFIXES + TOOL_SUFFIXES))
+            or parts[-1].endswith(CACHE_SUFFIXES) or is_tool_file_name(parts[-1]))
 
 
 _STATUS = {"A": ChangeStatus.ADDED, "D": ChangeStatus.DELETED}

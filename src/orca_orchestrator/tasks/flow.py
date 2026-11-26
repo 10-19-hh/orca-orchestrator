@@ -17,6 +17,11 @@ person, like any failure.
 What the flow did last is kept in ``<results>.flow.json`` so the status screen
 can show the current task and why the flow stopped. Writing it never decides
 anything: the results file stays the single source for completion.
+
+Before choosing, the flow compares the handoff record (``tasks.handoff``) with
+the current plan, code and results. It does not start while another session
+runs a task or while an earlier run's end is unconfirmed, and it holds each
+task (``claim_task``) for as long as it works on it, recording every run.
 """
 
 from __future__ import annotations
@@ -24,14 +29,14 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
 
-from .codebase import source_state
-from .contract import Outcome, TaskPlan, VerificationResult, validate
+from .codebase import SourceState, source_state
+from .contract import Outcome, TaskPlan, VerificationResult, plan_digest, validate
 from .paths import flow_status_path, tool_files
 from .progress import (
     CheckProgress,
@@ -119,6 +124,7 @@ class FlowView:
     progress: PlanProgress
     next: Selection | None
     blockers: tuple[Blocker, ...]  # unfinished tasks that cannot be selected now, plan order
+    source: SourceState | None = None  # the code the results were judged against, when known
 
     @property
     def all_verified(self) -> bool:
@@ -179,7 +185,24 @@ def inspect(plan_path: Path, results_path: Path, repo: Path | None = None) -> Fl
     if issues:
         raise VerificationSetupError("작업 정의 또는 검증 결과에 오류가 있어 판단하지 않음", issues)
     source = source_state(repo, tool_files(plan_path, results_path)) if repo is not None else None
-    return select(plan, evaluate(plan, results, source))
+    return replace(select(plan, evaluate(plan, results, source)), source=source)
+
+
+def plan_fingerprint(plan_path: Path) -> str | None:
+    try:
+        return plan_digest(json.loads(Path(plan_path).read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return None
+
+
+def resume_view(plan_path: Path, results_path: Path, view: FlowView, probe=None):
+    """What the handoff record says about resuming, against the plan, code and results in ``view``."""
+
+    from .handoff import blocked_map, read_resume
+
+    return read_resume(results_path, view.plan, view.progress, view.next.task_id if view.next else None,
+                       digest=plan_fingerprint(plan_path), source=view.source, probe=probe,
+                       blocked=blocked_map(view.blockers))
 
 
 # --- requirement trace (FR-07) ------------------------------------------------------
@@ -238,6 +261,8 @@ class StopKind(str, Enum):
     NOT_COMPLETED = "not_completed"  # timeout, launch failure, no tests ran
     NOT_RECORDED = "not_recorded"  # ran, but the result could not be saved
     REFUSED = "refused"  # plan/results unusable, nothing ran
+    BUSY = "busy"  # another session runs the task; nothing ran
+    UNRESOLVED = "unresolved"  # an earlier run's end is unconfirmed; nothing ran
 
 
 @dataclass(frozen=True)
@@ -369,12 +394,16 @@ def run_flow(
     verify_fn: Callable[..., VerificationRun] = verify,
     notify: Notify = lambda kind, payload: None,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    probe=None,
 ) -> FlowReport:
     """Verify ready tasks one check at a time until done, blocked or stopped.
 
     ``notify(kind, payload)`` reports progress: ``"select"`` (Selection),
     ``"start"`` ((task, check)), ``"result"`` (VerificationRun), ``"warning"`` (str).
+    ``probe`` asks an executor whether an unconfirmed run still runs (default: never assumed).
     """
+
+    from .handoff import ClaimRefused, ResumeState, claim_task
 
     plan_path, results_path = Path(plan_path), Path(results_path)
     status_path = flow_status_path(results_path)
@@ -400,6 +429,13 @@ def run_flow(
             view = inspect(plan_path, results_path, Path(repo))
         except VerificationSetupError as exc:
             return stop(StopKind.REFUSED, exc.message, None)
+        resume = resume_view(plan_path, results_path, view, probe)
+        if resume.error:
+            return stop(StopKind.UNRESOLVED, f"실행 기록을 읽을 수 없어 시작하지 않음 ({resume.error})", view)
+        block = resume.blocking
+        if block is not None:
+            kind = StopKind.UNRESOLVED if block.state is ResumeState.CHECK_RUN else StopKind.BUSY
+            return stop(kind, f"{block.reason} · {block.next_action}", view, block.task_id)
         selection = view.next
         if selection is None:
             if view.all_verified:
@@ -412,26 +448,39 @@ def run_flow(
                         selection.task_id)
         selected_tasks += 1
         notify("select", selection)
-        for check_id in selection.check_ids:
-            key = (selection.task_id, check_id)
-            if key in attempted:  # cannot happen with a valid result file; never loop
-                return stop(StopKind.NOT_COMPLETED, "같은 검증 조건이 다시 선택되어 멈춤", view, *key)
-            attempted.add(key)
-            notify("start", key)
-            save_status("running", current=(selection.task_id, check_id, _iso(now())))
-            try:
-                run = verify_fn(plan_path, results_path, selection.task_id, check_id, repo=repo, timeout=timeout)
-            except VerificationSetupError as exc:
-                return stop(StopKind.REFUSED, exc.message, view, *key)
-            except VerificationNotRecorded as exc:
-                outcome = "통과" if exc.result.outcome is Outcome.PASSED else "실패"
-                return stop(StopKind.NOT_RECORDED, f"테스트는 끝났지만({outcome}) {exc.message}", view, *key)
-            except VerificationNotCompleted as exc:
-                return stop(StopKind.NOT_COMPLETED, exc.message, view, *key)
-            runs.append(run)
-            notify("result", run)
-            if run.result.outcome is not Outcome.PASSED:
-                return stop(StopKind.FAILED, f"검증 실패 (종료 코드 {run.result.exit_code}) · {run.summary}", view, *key)
+        try:
+            claim = claim_task(plan_path, results_path, view.plan, selection.task_id, selection.check_ids,
+                               repo=Path(repo), source=view.source, probe=probe, now=now)
+        except ClaimRefused as exc:
+            kind = StopKind.BUSY if exc.kind == ClaimRefused.BUSY else StopKind.UNRESOLVED
+            return stop(kind, exc.message, view, selection.task_id)
+        except VerificationSetupError as exc:
+            return stop(StopKind.REFUSED, exc.message, view, selection.task_id)
+        with claim:
+            for check_id in selection.check_ids:
+                key = (selection.task_id, check_id)
+                if key in attempted:  # cannot happen with a valid result file; never loop
+                    return stop(StopKind.NOT_COMPLETED, "같은 검증 조건이 다시 선택되어 멈춤", view, *key)
+                attempted.add(key)
+                notify("start", key)
+                save_status("running", current=(selection.task_id, check_id, _iso(now())))
+                try:
+                    run = verify_fn(plan_path, results_path, selection.task_id, check_id, repo=repo, timeout=timeout,
+                                    claim=claim)
+                except VerificationSetupError as exc:
+                    return stop(StopKind.REFUSED, exc.message, view, *key)
+                except VerificationNotRecorded as exc:
+                    outcome = "통과" if exc.result.outcome is Outcome.PASSED else "실패"
+                    return stop(StopKind.NOT_RECORDED, f"테스트는 끝났지만({outcome}) {exc.message}", view, *key)
+                except VerificationNotCompleted as exc:
+                    timed_out = type(exc).__name__ == "VerificationTimedOut"
+                    message = exc.message + (" · 실행 상태 확인 필요로 기록함" if timed_out else "")
+                    return stop(StopKind.NOT_COMPLETED, message, view, *key)
+                runs.append(run)
+                notify("result", run)
+                if run.result.outcome is not Outcome.PASSED:
+                    return stop(StopKind.FAILED, f"검증 실패 (종료 코드 {run.result.exit_code}) · {run.summary}",
+                                view, *key)
         try:
             after = inspect(plan_path, results_path, Path(repo))
         except VerificationSetupError as exc:

@@ -156,6 +156,7 @@ class BlockKind(str, Enum):
     COMPARE = "compare"  # the change set could not be determined
     PROTECTED = "protected"  # a protected path changed, or could not be checked
     RECORD = "record"  # the decision file exists but cannot be read
+    RUN = "run"  # a task is running in another session, or an earlier run's end is unconfirmed
 
 
 @dataclass(frozen=True)
@@ -225,8 +226,27 @@ def _check_needs(tp) -> str:
     return ", ".join(parts)
 
 
+def run_blockers(resume) -> tuple[Blocker, ...]:
+    """Approval waits while a task runs or an earlier run's end is unconfirmed (tasks.handoff)."""
+
+    from .handoff import ResumeState
+
+    if resume is None:
+        return ()
+    if resume.error:
+        return (Blocker(BlockKind.RUN, "", f"실행 기록을 읽을 수 없음 · {resume.error}"),)
+    out = []
+    for t in resume.tasks:
+        if t.state is ResumeState.CHECK_RUN:
+            out.append(Blocker(BlockKind.RUN, t.task_id, f"{t.task_id}: 실행 상태 확인 필요 · {t.reason}"))
+        elif t.state is ResumeState.RUNNING:
+            out.append(Blocker(BlockKind.RUN, t.task_id, f"{t.task_id}: 실행 중 · {t.reason}"))
+    return tuple(out)
+
+
 def build_review(plan: TaskPlan, digest: str, results: tuple[VerificationResult, ...], code: CodeState,
-                 record: ApprovalRecord | None = None, record_error: str | None = None) -> Review:
+                 record: ApprovalRecord | None = None, record_error: str | None = None,
+                 extra_blockers: tuple[Blocker, ...] = ()) -> Review:
     """Pure judgment from already-read inputs. ``plan`` and ``results`` must be valid."""
 
     progress = evaluate(plan, results, code.source)
@@ -245,6 +265,7 @@ def build_review(plan: TaskPlan, digest: str, results: tuple[VerificationResult,
     blockers: list[Blocker] = []
     if record_error:
         blockers.append(Blocker(BlockKind.RECORD, "", f"승인 기록을 읽을 수 없음 · {record_error}"))
+    blockers.extend(extra_blockers)
     if code.source.digest is None:
         blockers.append(Blocker(BlockKind.CODE, "", f"현재 코드 확인 불가 · {code.source.error}"))
     for tp in progress.tasks:
@@ -309,7 +330,16 @@ def load_review(plan_path: str | Path, results_path: str | Path, repo: str | Pat
             text = "\0"
     record, error = parse_approval_text(text, record_file.name)
     code = read_code(repo, plan, tool_files(plan_path, results_path), git)
-    return build_review(plan, plan_digest(data), results, code, record, error)
+    from .flow import select
+    from .handoff import read_resume
+
+    progress = evaluate(plan, results, code.source)
+    from .handoff import blocked_map
+
+    view = select(plan, progress)
+    resume = read_resume(results_path, plan, progress, view.next.task_id if view.next else None,
+                         digest=plan_digest(data), source=code.source, blocked=blocked_map(view.blockers))
+    return build_review(plan, plan_digest(data), results, code, record, error, run_blockers(resume))
 
 
 # --- recording the person's decision -------------------------------------------

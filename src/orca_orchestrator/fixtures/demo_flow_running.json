@@ -1,0 +1,12 @@
+{
+  "schema": "orca-orchestrator/flow-status@1",
+  "state": "running",
+  "updated_at": "2026-11-26T11:40:00Z",
+  "current": {
+    "task": "T-1",
+    "check": "unit-tests",
+    "started_at": "2026-11-26T11:40:00Z"
+  },
+  "last": null,
+  "verified": []
+}

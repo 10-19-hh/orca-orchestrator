@@ -2,8 +2,11 @@
 
 Exit codes: 0 every task verified locally (final approval still the person's),
 1 a check failed, 2 refused before running, 3 not completed or not recorded,
-4 stopped with tasks left that cannot be selected, 5 stopped at --max-tasks.
-``--dry-run`` only judges and prints; it runs and writes nothing.
+4 stopped with tasks left that cannot be selected, 5 stopped at --max-tasks,
+6 another session is running a task, 7 an earlier run's end must be confirmed
+(``python -m orca_orchestrator.handoff``). Running the command again resumes
+from the saved results and handoff record. ``--dry-run`` only judges and
+prints; it runs and writes nothing.
 """
 
 from __future__ import annotations
@@ -19,16 +22,18 @@ from .tasks.flow import (
     StopKind,
     flow_status_path,
     inspect,
+    resume_view,
     run_flow,
     trace_lines,
 )
+from .tasks.handoff import RESUME_TEXT, ResumeState, attempt_line, progress_line, run_line
 from .tasks.verification import (
     DEFAULT_TIMEOUT_SECONDS,
     SUPPORTED_CHECKS,
     VerificationRun,
     VerificationSetupError,
 )
-from .tui.render import issue_text
+from .tui.render import issue_text, local_time
 
 EXIT_CODES = {
     StopKind.DONE: 0,
@@ -38,6 +43,8 @@ EXIT_CODES = {
     StopKind.NOT_RECORDED: 3,
     StopKind.WAITING: 4,
     StopKind.LIMIT: 5,
+    StopKind.BUSY: 6,
+    StopKind.UNRESOLVED: 7,
 }
 STOP_TITLES = {
     StopKind.DONE: "흐름 끝남",
@@ -47,6 +54,8 @@ STOP_TITLES = {
     StopKind.NOT_COMPLETED: "흐름 중단",
     StopKind.NOT_RECORDED: "흐름 중단",
     StopKind.REFUSED: "흐름 중단",
+    StopKind.BUSY: "흐름 시작 안 함",
+    StopKind.UNRESOLVED: "흐름 시작 안 함",
 }
 APPROVAL_LINE = ("최종 승인: 흐름은 승인하지 않습니다 · python -m orca_orchestrator.review로 "
                  "변경과 증거를 확인한 뒤 사용자가 직접 승인합니다")
@@ -73,8 +82,26 @@ def _say(line: str = "") -> None:
     print(line, flush=True)
 
 
-def _print_view(view: FlowView) -> None:
-    if view.next is not None:
+def _print_resume(plan: Path, results: Path, view: FlowView, title: str):
+    resume = resume_view(plan, results, view)
+    _say(f"{title}: {resume.verdict()}")
+    last = resume.last
+    if last is None:
+        return resume
+    current = next((t for t in resume.tasks if t.task_id == last.task), None)
+    live = current is not None and current.state is ResumeState.RUNNING
+    _say(f"  마지막 실행 {attempt_line(last, live, local_time)}")
+    _say(f"  {run_line(last, live)}")
+    _say(f"  {progress_line(last)}")
+    _say(f"  다음 행동: {resume.next_action()}")
+    return resume
+
+
+def _print_view(view: FlowView, resume=None) -> None:
+    block = resume.blocking if resume is not None else None
+    if block is not None:
+        _say(f"다음 작업: 보류 · {block.task_id} {RESUME_TEXT[block.state]}")
+    elif view.next is not None:
         _say(f"다음 작업: {view.next.task_id} · {view.next.reason}")
     elif view.all_verified:
         _say("다음 작업: 없음 · 모든 작업의 로컬 검증 통과")
@@ -115,7 +142,8 @@ def main(argv: list[str] | None = None) -> int:
                 _say(f"  · {issue_text(issue)}")
             return EXIT_CODES[StopKind.REFUSED]
         _say("미리 보기: 아무것도 실행하거나 기록하지 않습니다.")
-        _print_view(view)
+        resume = _print_resume(Path(args.tasks), Path(args.results), view, "재개 판단")
+        _print_view(view, resume)
         return 0
 
     step = {"n": 0}
@@ -146,7 +174,9 @@ def main(argv: list[str] | None = None) -> int:
     if stop.kind is StopKind.FAILED:
         _say(f"실패 결과를 {results_name}에 기록했습니다. 원인을 고친 뒤 verify로 이 검증을 다시 실행하면 같은 명령으로 이어갈 수 있습니다.")
     elif stop.kind in (StopKind.NOT_COMPLETED, StopKind.NOT_RECORDED):
-        _say(f"이번 검증은 기록하지 않았습니다. {results_name}의 이전 결과는 그대로이며 같은 명령으로 이어서 실행할 수 있습니다.")
+        _say(f"이번 검증은 기록하지 않았습니다. {results_name}의 이전 결과는 그대로입니다.")
+    elif stop.kind in (StopKind.BUSY, StopKind.UNRESOLVED):
+        _say("아무것도 실행하지 않았습니다. python -m orca_orchestrator.handoff로 실행 기록을 확인할 수 있습니다.")
     try:
         view = inspect(Path(args.tasks), Path(args.results), Path(args.repo))
     except VerificationSetupError as exc:
@@ -154,7 +184,8 @@ def main(argv: list[str] | None = None) -> int:
         for issue in exc.issues[:5]:
             _say(f"  · {issue_text(issue)}")
     if view is not None:
-        _print_view(view)
+        resume = _print_resume(Path(args.tasks), Path(args.results), view, "인수인계")
+        _print_view(view, resume)
     _say(f"흐름 상태: {flow_status_path(Path(args.results)).name}")
     return EXIT_CODES[stop.kind]
 

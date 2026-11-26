@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from ..tasks import BoardState, IssueCode, TaskBoard, TaskState
 from ..tasks.flow import STALE_TEXT, StopKind
+from ..tasks.handoff import RESUME_TEXT, ResumeState, attempt_line, progress_line, run_line
 from ..tasks.review import (
     ApprovalState,
     approval_summary,
@@ -223,6 +224,8 @@ STOP_LABELS = {
     StopKind.NOT_COMPLETED: "중단",
     StopKind.NOT_RECORDED: "중단",
     StopKind.REFUSED: "중단",
+    StopKind.BUSY: "시작 안 함",
+    StopKind.UNRESOLVED: "시작 안 함",
 }
 
 
@@ -236,6 +239,9 @@ def local_time(iso: str) -> str:
 
 def next_text(board: TaskBoard) -> str:
     view = board.view
+    block = board.resume.blocking if board.resume is not None else None
+    if block is not None:
+        return f"보류 · {block.task_id} {RESUME_TEXT[block.state]} (재개 참고)"
     if view.next is not None:
         return f"{view.next.task_id} · {view.next.reason}"
     if view.all_verified:
@@ -255,6 +261,9 @@ def flow_text(board: TaskBoard) -> str | None:
         return None
     if status.state == "running" and status.current is not None:
         task, check, started = status.current
+        resume = board.resume
+        if resume is not None and not any(t.task_id == task and t.state is ResumeState.RUNNING for t in resume.tasks):
+            return f"중단 (세션 종료) · {task}/{check} · 시작 {local_time(started)}"
         return f"실행 중 · {task}/{check} · 시작 {local_time(started)}"
     last = status.last
     if last is None:
@@ -262,6 +271,23 @@ def flow_text(board: TaskBoard) -> str | None:
     target = f"{last.task_id}/{last.check_id}" if last.task_id and last.check_id else last.task_id
     parts = [STOP_LABELS[last.kind], *([target] if target else []), local_time(last.at), last.message]
     return " · ".join(parts)
+
+
+def resume_lines(board: TaskBoard) -> list[str]:
+    """Whether work can resume, and the handoff of the most recent attempt."""
+
+    resume = board.resume
+    lines = [_row("재개", resume.verdict())]
+    last = resume.last
+    if last is None:
+        return lines
+    current = next((t for t in resume.tasks if t.task_id == last.task), None)
+    live = current is not None and current.state is ResumeState.RUNNING
+    lines.append(_row("마지막 실행", attempt_line(last, live, local_time)))
+    lines.append(f"  {run_line(last, live)}")
+    lines.append(f"  {progress_line(last)}")
+    lines.append(f"  다음 행동: {resume.next_action()}")
+    return lines
 
 
 def review_lines(board: TaskBoard) -> list[str]:
@@ -336,6 +362,8 @@ def task_lines(board: TaskBoard) -> list[str]:
     flow = flow_text(board)
     if flow:
         lines.append(_row("흐름", flow))
+    if board.resume is not None:
+        lines += resume_lines(board)
     if board.review is not None:
         lines += review_lines(board)
     else:

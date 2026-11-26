@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
-from typing import Mapping, Protocol, Sequence
+from typing import Callable, Mapping, Protocol, Sequence
 
 
 @dataclass(frozen=True)
@@ -71,3 +71,55 @@ class SubprocessRunner:
             stdout=completed.stdout or "",
             stderr=completed.stderr or "",
         )
+
+
+class TrackedSubprocessRunner(SubprocessRunner):
+    """Like SubprocessRunner, but reports the child's process ID as soon as it starts.
+
+    Used for local verification so an execution record can name the process it
+    started. On timeout the child is killed; whether processes it started
+    themselves also ended is not known, so the caller treats the end as unknown.
+    """
+
+    reports_start = True
+
+    def run(
+        self,
+        argv: Sequence[str],
+        *,
+        timeout: float,
+        cwd: str | None = None,
+        on_start: Callable[[int], None] | None = None,
+    ) -> CommandResult:
+        args = [str(a) for a in argv]
+        try:
+            proc = subprocess.Popen(
+                args,
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=cwd,
+                env=self._env,
+            )
+        except OSError as exc:
+            raise CommandLaunchError(f"{type(exc).__name__}: {exc.strerror or exc}") from None
+        try:
+            if on_start is not None:
+                on_start(proc.pid)
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+            raise CommandTimeout(f"timed out after {timeout}s") from None
+        except BaseException:
+            proc.kill()
+            proc.wait()
+            raise
+        return CommandResult(tuple(args), proc.returncode, stdout or "", stderr or "")

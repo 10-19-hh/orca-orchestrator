@@ -35,7 +35,26 @@ from orca_orchestrator.tasks.verification import (
     verify,
 )
 
+from orca_orchestrator.tasks.handoff import read_attempts
+from orca_orchestrator.tasks.paths import is_tool_file_name
+
 from support import ROOT
+
+
+def failing_replace(error):
+    """os.replace that fails only for the results file (the handoff record is still written)."""
+
+    real = os.replace
+    calls = []
+
+    def replace(src, dst):
+        if str(dst).endswith("results.json"):
+            calls.append(dst)
+            raise error
+        return real(src, dst)
+
+    replace.calls = calls
+    return replace
 
 NOW = datetime(2026, 11, 26, 11, 0, 0, tzinfo=timezone.utc)
 PYTHON = "C:/fake/python.exe"
@@ -147,8 +166,12 @@ class OutcomeTest(unittest.TestCase):
                     self.assertIn(text, ctx.exception.message)
                     self.assertEqual(len(runner.calls), 1)  # tried once, never retried
                     self.assertEqual(ws.snapshot(), before)
-                    self.assertEqual(sorted(p.name for p in ws.root.iterdir()),
+                    self.assertEqual(sorted(p.name for p in ws.root.iterdir() if not is_tool_file_name(p.name)),
                                      sorted(["plan.json", "tests"] + (["results.json"] if results else [])))
+                    # the handoff record says how the run ended: a timeout's end is not confirmed
+                    (attempt,) = read_attempts(ws.results)[0]
+                    expected = ("unknown", "unknown") if isinstance(error, CommandTimeout) else ("ended", "not_started")
+                    self.assertEqual((attempt.state.value, attempt.runs[-1].end.value), expected)
 
     def test_runs_once_with_given_timeout(self):
         ws = Workspace(self)
@@ -355,7 +378,7 @@ class CliTest(unittest.TestCase):
 
         code, out, _ = self.call(ws, CommandTimeout("t"), "--timeout", "5")
         self.assertEqual(code, cli.EXIT_NOT_COMPLETED)
-        self.assertIn("검증 미완료 · T-1/unit-tests · 제한 시간 5초 안에 끝나지 않음", out)
+        self.assertIn("검증 미완료 · T-1/unit-tests · 제한 시간 5초 초과", out)
         self.assertIn("결과를 기록하지 않았습니다", out)
         self.assertEqual(ws.stored()[0].outcome, Outcome.FAILED)  # unchanged by the timeout
 
@@ -514,7 +537,7 @@ class SaveFailureTest(unittest.TestCase):
     def test_write_failure_keeps_original_and_removes_temp(self):
         ws = Workspace(self, results=self.EXISTING)
         before = ws.snapshot()
-        with mock.patch("orca_orchestrator.tasks.verification.os.replace", side_effect=OSError("disk full")):
+        with mock.patch("orca_orchestrator.tasks.verification.os.replace", failing_replace(OSError("disk full"))):
             err = self.assert_not_recorded(ws, lambda: None, "결과 파일을 저장하지 못함 (results.json: OSError)")
         self.assertEqual(ws.snapshot(), before)
         self.assertEqual(err.result.outcome, Outcome.PASSED)
@@ -522,10 +545,11 @@ class SaveFailureTest(unittest.TestCase):
     def test_busy_destination_is_retried_briefly_then_reported(self):
         ws = Workspace(self, results=self.EXISTING)
         before = ws.snapshot()
-        with mock.patch("orca_orchestrator.tasks.verification.os.replace", side_effect=PermissionError("busy")) as rep, \
+        rep = failing_replace(PermissionError("busy"))
+        with mock.patch("orca_orchestrator.tasks.verification.os.replace", rep), \
                 mock.patch("orca_orchestrator.tasks.verification.time.sleep"):
             self.assert_not_recorded(ws, lambda: None, "PermissionError")
-        self.assertEqual(rep.call_count, 5)
+        self.assertEqual(len(rep.calls), 5)
         self.assertEqual(ws.snapshot(), before)
 
     def test_lock_file_is_separate_and_left_in_place(self):
