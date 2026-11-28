@@ -1,0 +1,332 @@
+[
+  {
+    "schema": "orca-orchestrator/topology@1",
+    "mode": "demo",
+    "demo": {
+      "scenario": "one-codex",
+      "label": "Codex 세션 1개 (작업 중)",
+      "step": 1,
+      "steps": 1,
+      "evidence": "응답 형태: Orca 1.4.264 실제 응답과 같은 필드 구조",
+      "note": "합성 DEMO · 실제 세션 관측 아님"
+    },
+    "observed_at": "2026-11-29T03:00:00Z",
+    "sequence": 1,
+    "runtime": {
+      "health": "connected",
+      "connected": true,
+      "app_version": "1.4.264",
+      "version_verified": true,
+      "error": null
+    },
+    "capabilities": [
+      {
+        "feature": "repositories",
+        "evidence": "VERIFIED",
+        "availability": "available",
+        "basis": "repo list --json"
+      },
+      {
+        "feature": "worktrees",
+        "evidence": "VERIFIED",
+        "availability": "available",
+        "basis": "worktree list --json; identity.key leaves out the path"
+      },
+      {
+        "feature": "worktree_git_crosscheck",
+        "evidence": "VERIFIED",
+        "availability": "available",
+        "basis": "git worktree list --porcelain: path and branch"
+      },
+      {
+        "feature": "tabs_and_panes",
+        "evidence": "VERIFIED",
+        "availability": "available",
+        "basis": "terminal list --include-visual-layouts"
+      },
+      {
+        "feature": "terminal_connection",
+        "evidence": "VERIFIED",
+        "availability": "available",
+        "basis": "terminals[].connected"
+      },
+      {
+        "feature": "agent_sessions_terminal",
+        "evidence": "VERIFIED",
+        "availability": "available",
+        "basis": "agent list: kind terminal, paneKey = tabId:leafId"
+      },
+      {
+        "feature": "agent_sessions_chat",
+        "evidence": "DOCUMENTED_ONLY",
+        "availability": "available",
+        "basis": "kind chat in the 1.4.264 contract; none observed"
+      },
+      {
+        "feature": "provider",
+        "evidence": "PARTIALLY_VERIFIED",
+        "availability": "available",
+        "basis": "agent claude and codex observed; other types documented"
+      },
+      {
+        "feature": "work_activity",
+        "evidence": "PARTIALLY_VERIFIED",
+        "availability": "available",
+        "basis": "working and done observed; blocked and waiting documented"
+      },
+      {
+        "feature": "activity_detail",
+        "evidence": "NOT_AVAILABLE",
+        "availability": "not_implemented",
+        "basis": "no thinking, coding or building field"
+      },
+      {
+        "feature": "session_end",
+        "evidence": "DOCUMENTED_ONLY",
+        "availability": "available",
+        "basis": "terminals[].exitCause documented, never observed"
+      },
+      {
+        "feature": "identity_across_restart",
+        "evidence": "UNVERIFIED",
+        "availability": "not_implemented",
+        "basis": "no restart or reconnection observed"
+      },
+      {
+        "feature": "events",
+        "evidence": "NOT_AVAILABLE",
+        "availability": "not_implemented",
+        "basis": "the CLI offers no event stream; this build polls once per call"
+      },
+      {
+        "feature": "worker_session_link",
+        "evidence": "NOT_AVAILABLE",
+        "availability": "not_implemented",
+        "basis": "no Orca field ties a Worker Dispatch to a pane"
+      }
+    ],
+    "sources": {
+      "repositories": {
+        "availability": "available",
+        "error": null,
+        "truncated": false,
+        "omitted_hosts": 0,
+        "invalid_items": 0
+      },
+      "worktrees": {
+        "availability": "available",
+        "error": null,
+        "truncated": false,
+        "omitted_hosts": 0,
+        "invalid_items": 0
+      },
+      "terminals": {
+        "availability": "available",
+        "error": null,
+        "truncated": false,
+        "omitted_hosts": 0,
+        "invalid_items": 0
+      },
+      "tabs": {
+        "availability": "available",
+        "error": null,
+        "truncated": false,
+        "omitted_hosts": 0,
+        "invalid_items": 0
+      },
+      "agent_sessions": {
+        "availability": "available",
+        "error": null,
+        "truncated": false,
+        "omitted_hosts": 0,
+        "invalid_items": 0
+      },
+      "git": {
+        "availability": "available",
+        "error": null,
+        "truncated": false,
+        "omitted_hosts": 0,
+        "invalid_items": 0
+      }
+    },
+    "summary": {
+      "rooms": 1,
+      "sessions": 1,
+      "working": 1,
+      "attention": 0,
+      "unobservable": 0,
+      "ended": 0
+    },
+    "repositories": [
+      {
+        "repo_id": "example-repo-1",
+        "display_name": "example-app",
+        "kind": "git",
+        "listed": true,
+        "first_seen_at": "2026-11-29T03:00:00Z",
+        "last_seen_at": "2026-11-29T03:00:00Z"
+      }
+    ],
+    "worktrees": [
+      {
+        "worktree_id": "wt2:local:example-wt-1-1",
+        "identity_basis": "orca_identity",
+        "repo_id": "example-repo-1",
+        "display_name": "main",
+        "branch": "main",
+        "is_main": true,
+        "archived": false,
+        "host": "local",
+        "lifecycle": "active",
+        "missing_since": null,
+        "arrival": 1,
+        "first_seen_at": "2026-11-29T03:00:00Z",
+        "last_seen_at": "2026-11-29T03:00:00Z",
+        "git": {
+          "listed": true,
+          "prunable": false,
+          "branch_matches": true
+        },
+        "room": {
+          "state": "open"
+        }
+      }
+    ],
+    "tabs": [
+      {
+        "tab_id": "example-tab-1-1",
+        "worktree_id": "wt2:local:example-wt-1-1",
+        "group_id": "group-repo-1",
+        "active": true,
+        "listed": true,
+        "panes": {
+          "type": "pane",
+          "pane_key": "example-tab-1-1:example-leaf-1-1",
+          "active": true
+        }
+      }
+    ],
+    "terminals": [
+      {
+        "pane_key": "example-tab-1-1:example-leaf-1-1",
+        "tab_id": "example-tab-1-1",
+        "leaf_id": "example-leaf-1-1",
+        "worktree_id": "wt2:local:example-wt-1-1",
+        "listed": true,
+        "connected": true,
+        "orphaned": false,
+        "incarnation_id": "example-inc-1-1",
+        "incarnation_changed": false,
+        "agent_identity": "codex",
+        "exit_reported": false,
+        "exit_cause": null,
+        "liveness": null,
+        "role": "agent_session",
+        "session_ids": [
+          "example-session-1-1"
+        ],
+        "first_seen_at": "2026-11-29T03:00:00Z",
+        "last_seen_at": "2026-11-29T03:00:00Z"
+      }
+    ],
+    "agent_sessions": [
+      {
+        "session_id": "example-session-1-1",
+        "identity": {
+          "basis": "orca_session_id",
+          "confirmed": true
+        },
+        "kind": "terminal",
+        "worktree_id": "wt2:local:example-wt-1-1",
+        "provider": "codex",
+        "provider_basis": "orca_agent_type",
+        "agent_type": "codex",
+        "places": [
+          {
+            "pane_key": "example-tab-1-1:example-leaf-1-1",
+            "tab_id": "example-tab-1-1",
+            "incarnation_id": "example-inc-1-1"
+          }
+        ],
+        "lifecycle": "active",
+        "missing_since": null,
+        "ended_at": null,
+        "end_evidence": null,
+        "activity": "working",
+        "last_activity": "working",
+        "activity_basis": "orca_agent_status",
+        "activity_detail": null,
+        "connection": "connected",
+        "freshness": {
+          "first_seen_at": "2026-11-29T03:00:00Z",
+          "last_seen_at": "2026-11-29T03:00:00Z",
+          "observed_now": true
+        },
+        "arrival": 1,
+        "reappeared": false,
+        "incarnation_changed": false,
+        "possible_predecessor": null,
+        "worker": null,
+        "presentation": {
+          "intent": "work",
+          "new": true
+        }
+      }
+    ],
+    "diagnostics": [],
+    "provenance": {
+      "generator": "orca_orchestrator.topology",
+      "source": "demo",
+      "answered": [
+        "repositories",
+        "worktrees",
+        "terminals",
+        "tabs",
+        "agent_sessions",
+        "git"
+      ],
+      "contract_basis": "Orca CLI 1.4.264 replies and v1.4.264 contract sources",
+      "synthetic": true,
+      "sends_commands": false,
+      "note": "합성 DEMO 장면. 응답 형태는 Orca 1.4.264를 따르지만 값과 전이는 만든 것이며 실제 세션 관측의 증거가 아님"
+    },
+    "not_included": [
+      {
+        "field": "titles",
+        "why": "탭·패널·에이전트 제목은 자유 텍스트(경로·명령 포함 가능)이고 식별 근거가 아님"
+      },
+      {
+        "field": "preview",
+        "why": "터미널 출력 미리보기는 내보내지 않음"
+      },
+      {
+        "field": "handle",
+        "why": "터미널 핸들은 입력 전송에 쓰이는 값이라 내보내지 않음"
+      },
+      {
+        "field": "pty_id",
+        "why": "PTY ID에 경로가 들어 있음"
+      },
+      {
+        "field": "paths",
+        "why": "절대 경로와 경로가 들어 있는 Orca worktree locator는 연결에만 쓰고 내보내지 않음"
+      },
+      {
+        "field": "last_assistant_message",
+        "why": "대화 내용은 Topology의 범위가 아님"
+      },
+      {
+        "field": "remote_identity",
+        "why": "Git 원격 주소·소유자·사용자 이름·프로젝트 제공자 식별은 내보내지 않음"
+      },
+      {
+        "field": "activity_detail",
+        "why": "Thinking·Coding·Building을 구분하는 Orca 필드가 없음"
+      },
+      {
+        "field": "station_and_pose",
+        "why": "자리 배정·좌표·프레임·카메라는 화면 쪽 표현 상태 (Room Composer)"
+      }
+    ]
+  }
+]

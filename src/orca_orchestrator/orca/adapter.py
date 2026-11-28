@@ -10,6 +10,7 @@ Only operations verified in Step 0 Experiment 1 on Orca 1.4.264 are wired:
                                             (read; response shape from the v1.4.264 source, not yet observed)
 
 ``worker-start`` is not wired: its argv is only built (``workers.worker_start_args``).
+``read`` runs a read query for ``topology.discovery``, which allows only its own listing commands.
 
 Experiment 1 showed that an external process without an inherited
 ``ORCA_TERMINAL_HANDLE`` is rejected with ``no_active_sender_terminal``. The
@@ -195,6 +196,15 @@ class OrcaCliAdapter:
 
         result = self._invoke(worker_show_args(dispatch_id), mutation=False)
         return worker_observation(result, dispatch_id, self._last_argv, expected_run=run_id)
+
+    def read(self, args: Sequence[str]) -> dict[str, Any]:
+        """One read-only query; returns its ``result`` object, or raises an adapter error.
+
+        Never retried. Callers pair it with an allowlist runner (``topology.discovery``
+        uses ``TopologyReadOnlyRunner``), so only listed read commands can run.
+        """
+
+        return self._invoke(list(args), mutation=False)
 
     # ---- mutation (Run namespace only) ------------------------------------
 
