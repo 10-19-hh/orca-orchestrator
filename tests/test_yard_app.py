@@ -122,7 +122,7 @@ class YardScreenTest(AppTestCase):
         app, *_ = yard_app("failed")
         async with app.run_test(size=(120, 34)) as pilot:
             await ready(pilot, app)
-            rect = view(app).target_rects()["actor"]
+            rect = view(app).target_rects()["codex"]
             self.assertTrue(await pilot.click("#yard", offset=center(rect)))
             await pilot.pause()
             self.assertNotIsInstance(app.screen, YardScreen)
@@ -134,7 +134,7 @@ class YardScreenTest(AppTestCase):
             await pilot.pause()
             self.assertIsInstance(app.screen, YardScreen)
             self.assertIs(app.screen.focused, view(app))
-            self.assertEqual(view(app).selected, "actor")
+            self.assertEqual(view(app).selected, "codex")
 
             await pilot.press("tab")  # the inbox; then open from it and come back to it
             await pilot.pause()
@@ -149,13 +149,29 @@ class YardScreenTest(AppTestCase):
             await pilot.pause()
             self.assertIs(app.screen.focused, app.yard.query_one("#inbox", OptionList))
 
+    async def test_two_pets_are_separate_targets(self):
+        app, *_ = yard_app("failed")
+        async with app.run_test(size=(120, 34)) as pilot:
+            await ready(pilot, app)
+            rects = view(app).target_rects()
+            codex, claude = rects["codex"], rects["claude"]
+            self.assertTrue(codex.x + codex.w <= claude.x or claude.x + claude.w <= codex.x)
+            self.assertIn("Codex 펫", str(app.yard.query_one("#yard-status", Static).render()))
+            await pilot.click("#yard", offset=center(claude))
+            await pilot.pause()
+            self.assertEqual(app.active_tab(), "tab-tasks")
+            self.assertEqual(app.selected, "T-1")
+            await pilot.press("escape")
+            await pilot.pause()
+            self.assertEqual(view(app).selected, "claude")
+
     async def test_click_bench_opens_and_grass_does_nothing(self):
         app, *_ = yard_app("none")
         async with app.run_test(size=(120, 34)) as pilot:
             await ready(pilot, app)
             yard = view(app)
             rects = yard.target_rects()
-            grass = (rects["actor"].x + rects["actor"].w + 3, rects["actor"].y + 1)
+            grass = (rects["bench"].x - 2, 1)
             self.assertIsNone(yard.target_at(*grass))
             await pilot.click("#yard", offset=grass)
             await pilot.pause()
@@ -193,6 +209,8 @@ class YardScreenTest(AppTestCase):
         async with app.run_test(size=(120, 34)) as pilot:
             await ready(pilot, app)
             await pilot.press("right")
+            self.assertEqual(view(app).selected, "claude")
+            await pilot.press("right")
             self.assertEqual(view(app).selected, "bench")
             await pilot.press("right")
             self.assertEqual(view(app).selected, "bubble")
@@ -203,7 +221,7 @@ class YardScreenTest(AppTestCase):
             await pilot.press("escape")
             await pilot.pause()
             self.assertEqual(view(app).selected, "bubble")  # selection kept
-            await pilot.press("left", "left", "enter")
+            await pilot.press("left", "left", "left", "enter")
             await pilot.pause()
             self.assertEqual(app.active_tab(), "tab-tasks")
             self.assertEqual(app.selected, "T-2")
@@ -235,7 +253,7 @@ class YardScreenTest(AppTestCase):
                 self.assertGreaterEqual(x, 0)
                 self.assertLessEqual(x + bubble.box[0], yard.size.width)
                 self.assertGreaterEqual(y, 0)
-                await pilot.click("#yard", offset=center(yard.target_rects()["actor"]))
+                await pilot.click("#yard", offset=center(yard.target_rects()["codex"]))
                 await pilot.pause()
                 self.assertEqual(app.active_tab(), "tab-tasks", size)
                 await pilot.press("escape")

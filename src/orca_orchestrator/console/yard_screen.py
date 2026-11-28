@@ -41,11 +41,13 @@ from textual.widgets.option_list import Option
 from ..tui.render import display_width, fit
 from . import pixels as px
 from .motion import FRAME_SECONDS, Actor, Layout, Motion, Pose, Rect
-from .sprites import SELECT_COLOR, bench_frames, character_frames, garden
+from .sprites import PET_NAMES, SELECT_COLOR, desk_frames, pet_frames, pet_layers, pet_size, prop_frames, room, shadow
 from .yard import AT_BENCH, Mood, Request, RequestBook, YardModel
 
-ACTOR, BENCH, BUBBLE = "actor", "bench", "bubble"
-TARGET_NAMES = {ACTOR: "캐릭터", BENCH: "작업대", BUBBLE: "말풍선"}
+CODEX, CLAUDE, BENCH, BUBBLE = "codex", "claude", "bench", "bubble"
+PETS = (CODEX, CLAUDE)  # drawing order: the later one is in front
+ACTOR = CODEX  # the pet the bubble stands over and the default selection
+TARGET_NAMES = {CODEX: PET_NAMES[CODEX], CLAUDE: PET_NAMES[CLAUDE], BENCH: "작업대", BUBBLE: "말풍선"}
 NARROW_WIDTH, SHORT_HEIGHT = 70, 22
 BUBBLE_MAX = 44
 
@@ -64,28 +66,41 @@ def colors_for(color_system: str | None, no_color: bool) -> str:
 class TextLayout:
     """The character-only scene used when colours are limited: same targets, plain text."""
 
-    ACTOR_W, BENCH_W, H = 10, 10, 3
+    PET_W, BENCH_W, H = 8, 10, 3
+    ART = {
+        CODEX: (["[>_ ]", "[ ? ]", "[>  ]", "\\[>_]/"], " /|\\ ", " / \\ "),
+        CLAUDE: (["[| |]", "[. .]", "[- -]", "\\[^ ^]/"], "=[   ]=", " '' '' "),
+    }
 
     def __init__(self, width: int, height: int, at_bench: bool) -> None:
         self.width, self.height = width, height
         self.has_bench = width >= 34 and height >= self.H
         bx = width - self.BENCH_W - 1
         self.bench = Rect(bx, 0, self.BENCH_W, self.H) if self.has_bench else None
-        self.actor = Rect(bx - self.ACTOR_W - 1 if (at_bench and self.has_bench) else 1, 0, self.ACTOR_W, self.H)
+        if at_bench and self.has_bench:
+            xs = {CODEX: bx - self.PET_W - 1, CLAUDE: max(0, bx - 2 * self.PET_W - 2)}
+        else:
+            xs = {CODEX: 1, CLAUDE: 1 + self.PET_W + 1}
+        self.pets = {name: Rect(x, 0, self.PET_W, self.H) for name, x in xs.items()}
 
-    def lines(self, frame: str, selected: str | None) -> list[str]:
+    def lines(self, frames: dict[str, str], selected: str | None) -> list[str]:
         # ASCII and Hangul only: their cell widths are the same in every terminal and in Rich.
-        face = {"worried": " ( ;_; ) ", "happy": "\\( ^o^ )/", "blink": " ( -_- ) ",
-                "work1": " ( o_o )>", "work2": " ( o_o )>"}.get(frame, " ( o_o ) ")
-        actor = [face, "  /|  |\\ ", "   /  \\  "]
-        bench = ["+--------+", "| 작업대 |", "+--------+"]
+        parts_by_row: list[list[tuple[Rect, str]]] = [[] for _ in range(self.H)]
+        for name, rect in self.pets.items():
+            faces, body, feet = self.ART[name]
+            frame = frames.get(name, "idle")
+            face = faces[{"question": 1, "error": 1, "blink": 2, "sleep": 2, "happy": 3}.get(frame, 0)]
+            for i, text in enumerate((" " + face, body, feet)):
+                parts_by_row[i].append((rect, text))
+        if self.bench is not None:
+            for i, text in enumerate(["+--------+", "| 작업대 |", "+--------+"]):
+                parts_by_row[i].append((self.bench, text))
         rows = []
-        for i in range(self.H):
+        for parts in parts_by_row:
             line = [" "] * self.width
-            parts = [(self.actor, actor[i])] + ([(self.bench, bench[i])] if self.bench else [])
             for rect, text in parts:
                 col = rect.x
-                for ch in text:
+                for ch in text[: rect.w]:
                     w = cell_len(ch)
                     if col + w > self.width:
                         break
@@ -94,15 +109,15 @@ class TextLayout:
                         line[col + extra] = ""
                     col += w
             rows.append("".join(line))
-        marks = {ACTOR: self.actor, BENCH: self.bench}
+        marks = {**self.pets, BENCH: self.bench}
         if selected in marks and marks[selected] is not None and self.height > self.H:
             rect = marks[selected]
-            rows.append(" " * rect.x + fit("▲ 선택됨", rect.w))
+            rows.append(" " * rect.x + fit("▲ 선택", rect.w))
         return rows
 
 
 class YardView(Widget, can_focus=True):
-    """The pixel yard. Arrow keys move the selection between targets; Enter or a click opens one."""
+    """The pixel yard with two pets. Arrow keys move the selection between targets; Enter or a click opens one."""
 
     DEFAULT_CSS = "YardView { width: 100%; height: 100%; }"
     BINDINGS = [
@@ -112,7 +127,7 @@ class YardView(Widget, can_focus=True):
     ]
 
     class Open(Message):
-        """The person asked to open the detail behind a target (actor, bench or bubble)."""
+        """The person asked to open the detail behind a target (a pet, the bench or the bubble)."""
 
         def __init__(self, target: str) -> None:
             super().__init__()
@@ -128,7 +143,10 @@ class YardView(Widget, can_focus=True):
         super().__init__(id=id)
         self.clock = clock
         self.geom = Layout(0, 0)
-        self.actor = Actor(self.geom, rng or random.Random(), motion, clock())
+        rng = rng or random.Random()
+        now = clock()
+        self.actors = {name: Actor(self.geom, random.Random(rng.random()), motion, now, size=pet_size(name),
+                                   slot=i, start=((0.25, 0.55), (0.55, 0.8))[i]) for i, name in enumerate(PETS)}
         self.motion = motion  # what the person chose
         self.color_mode = colors
         self.still = False  # forced still (narrow screen)
@@ -136,14 +154,22 @@ class YardView(Widget, can_focus=True):
         self.selected = ACTOR
         self.has_bubble = False
         self.ticks = 0
-        self._frames = character_frames()
-        self._flipped = {name: art.mirrored() for name, art in self._frames.items()}
-        self._bench = bench_frames()
+        self._frames = {name: pet_frames(name) for name in PETS}
+        self._flipped = {name: {f: art.mirrored() for f, art in frames.items()} for name, frames in self._frames.items()}
+        self._props = prop_frames()
+        self._shadows = {name: shadow(pet_size(name)[0]) for name in PETS}
+        self._desk = desk_frames()
         self._background: px.Pixels | None = None
         self._strips: list[Strip] = []
-        self._pose: Pose | None = None
+        self._poses: dict[str, Pose] = {}
         self._timer = None
         self._styles: dict[tuple[str | None, str | None], Style] = {}
+
+    @property
+    def actor(self) -> Actor:
+        """The pet the bubble stands over."""
+
+        return self.actors[ACTOR]
 
     # -- lifecycle ----------------------------------------------------------------------
 
@@ -153,7 +179,8 @@ class YardView(Widget, can_focus=True):
 
     def on_resize(self, event: events.Resize) -> None:
         self.geom = Layout(event.size.width, event.size.height)
-        self.actor.set_layout(self.geom)
+        for actor in self.actors.values():
+            actor.set_layout(self.geom)
         self._background = None
         self.redraw(force=True)
 
@@ -170,7 +197,8 @@ class YardView(Widget, can_focus=True):
         return self._timer is not None and not self.paused and self.effective_motion is not Motion.OFF
 
     def _sync_timer(self) -> None:
-        self.actor.set_motion(self.effective_motion, self.clock())
+        for actor in self.actors.values():
+            actor.set_motion(self.effective_motion, self.clock())
         if self._timer is None:
             return
         if self.paused or self.effective_motion is Motion.OFF:
@@ -199,27 +227,29 @@ class YardView(Widget, can_focus=True):
             self.redraw(force=True)
 
     def set_mood(self, mood: Mood) -> None:
-        self.actor.set_mood(mood, self.clock())
+        now = self.clock()
+        for actor in self.actors.values():
+            actor.set_mood(mood, now)
         self.redraw()
 
     def cheer(self) -> None:
         """A short happy reaction to a passed check (presentation only)."""
 
-        if self.actor.mood not in AT_BENCH and self.actor.activity in ("rest", "walk"):
-            self.actor.activity, self.actor.target = "pose", None
-            self.actor.celebrate_until = self.clock() + 2.0
-            self.redraw()
+        now = self.clock()
+        for actor in self.actors.values():
+            actor.cheer(now)
+        self.redraw()
 
     # -- frames -----------------------------------------------------------------------------
 
     def tick(self) -> None:
-        """One animation step: move the character and redraw. Reads no state and runs nothing."""
+        """One animation step: move the pets and redraw. Reads no state and runs nothing."""
 
         self.ticks += 1
         self.redraw()
 
     def targets(self) -> list[str]:
-        out = [ACTOR]
+        out = list(PETS)
         if self._bench_rect() is not None:
             out.append(BENCH)
         if self.has_bubble:
@@ -229,27 +259,43 @@ class YardView(Widget, can_focus=True):
     def _bench_rect(self) -> Rect | None:
         if self.color_mode == "text":
             return TextLayout(self.size.width, self.size.height, False).bench
-        return self.geom.bench_rect()
+        return self.geom.desk_rect()
+
+    def _text_layout(self) -> TextLayout:
+        return TextLayout(self.size.width, self.size.height, self.actor.mood in AT_BENCH)
 
     def target_rects(self) -> dict[str, Rect]:
         """Cells each target covers now, from the same layout the frame was drawn with."""
 
         if self.color_mode == "text":
-            text = TextLayout(self.size.width, self.size.height, self.actor.mood in AT_BENCH)
-            rects = {ACTOR: text.actor}
+            text = self._text_layout()
+            rects = dict(text.pets)
             if text.bench is not None:
                 rects[BENCH] = text.bench
             return rects
-        x = self._pose.x if self._pose is not None else self.actor.x
-        rects = {ACTOR: self.geom.actor_rect(x)}
-        bench = self.geom.bench_rect()
+        rects = {}
+        for name, actor in self.actors.items():
+            pose = self._poses.get(name)
+            x, foot = (pose.x, pose.foot) if pose is not None else (actor.x, actor.foot)
+            rects[name] = self.geom.actor_rect(x, foot, actor.size)
+        bench = self.geom.desk_rect()
         if bench is not None:
             rects[BENCH] = bench
         return rects
 
+    def _front_to_back(self) -> list[str]:
+        """Targets in the order they are drawn, nearest first (the larger foot row is nearer)."""
+
+        feet = {name: (self._poses[name].foot if name in self._poses else int(a.foot)) for name, a in self.actors.items()}
+        if self.geom.desk_foot is not None:
+            feet[BENCH] = self.geom.desk_foot
+        else:
+            feet[BENCH] = -1
+        return sorted(feet, key=lambda n: (feet[n], n != BENCH), reverse=True)
+
     def target_at(self, x: int, y: int) -> str | None:
         rects = self.target_rects()
-        for name in (ACTOR, BENCH):  # the character is drawn over the bench
+        for name in self._front_to_back():
             rect = rects.get(name)
             if rect is not None and rect.contains(x, y):
                 return name
@@ -259,8 +305,7 @@ class YardView(Widget, can_focus=True):
         if self.color_mode == "text":
             rect = self.target_rects()[ACTOR]
             return min(max(0, rect.x), max(0, self.size.width - w)), rect.y + rect.h
-        x = self._pose.x if self._pose is not None else self.actor.x
-        return self.geom.bubble_xy(x, w, h)
+        return self.geom.bubble_xy(self.target_rects()[ACTOR], w, h)
 
     def _style(self, fg: str | None, bg: str | None) -> Style:
         key = (fg, bg)
@@ -269,43 +314,63 @@ class YardView(Widget, can_focus=True):
             style = self._styles[key] = Style(color=fg, bgcolor=bg)
         return style
 
-    def compose_pixels(self, pose: Pose) -> px.Pixels:
+    def desk_frame(self, poses: dict[str, Pose]) -> str:
+        """The monitor is on only while a local check started here runs: the pets watch it, nobody types."""
+
+        watching = [p for p in poses.values() if p.action == "watch"] if self.actor.mood in AT_BENCH else []
+        return ("on1" if watching[0].phase % 2 == 0 else "on2") if watching else "off"
+
+    def compose_pixels(self, poses: dict[str, Pose]) -> px.Pixels:
+        """Room, then the desk and pets back to front by their feet (each pet over its shadow, props on top)."""
+
         layout = self.geom
         if self._background is None:
-            self._background = garden(layout.px_width, layout.px_height, layout.workshop_x)
-        layers: list[tuple[px.Sprite, int, int]] = []
-        bench_xy = layout.bench_xy
-        if bench_xy is not None:
-            layers.append((self._bench[pose.bench], *bench_xy))
-        art = (self._flipped if pose.flip else self._frames)[pose.frame]
-        layers.append((art, pose.x, layout.actor_y))
-        canvas = px.compose(self._background, layers)
-        rects = {ACTOR: (pose.x, layout.actor_y, art.width, art.height)}
-        if bench_xy is not None:
-            rects[BENCH] = (*bench_xy, self._bench[pose.bench].width, self._bench[pose.bench].height)
+            self._background = room(layout.px_width, layout.px_height)
+        drawables: list[tuple[int, int, list[tuple[px.Sprite, int, int]]]] = []
+        rects: dict[str, tuple[int, int, int, int]] = {}
+        desk_xy = layout.desk_xy
+        if desk_xy is not None:
+            art = self._desk[self.desk_frame(poses)]
+            drawables.append((layout.desk_foot, 0, [(art, *desk_xy)]))
+            rects[BENCH] = (*desk_xy, art.width, art.height)
+        for order, name in enumerate(PETS, start=1):
+            pose = poses[name]
+            body, props = pet_layers(name, pose.action, pose.phase)
+            art = (self._flipped if pose.flip else self._frames)[name][body]
+            top = pose.foot - art.height + 1 - pose.dy
+            layers = [(self._shadows[name], pose.x + 1, pose.foot)] if body != "error" else []
+            layers.append((art, pose.x, top))
+            layers += [(self._props[prop], pose.x + dx, top + dy) for prop, dx, dy in props]
+            drawables.append((pose.foot, order, layers))
+            rects[name] = (pose.x, top, art.width, art.height)
+        drawables.sort(key=lambda d: (d[0], d[1]))
+        canvas = px.compose(self._background, [layer for _, _, layers in drawables for layer in layers])
         if self.has_focus and self.selected in rects:
             _corners(canvas, *rects[self.selected])
         return canvas
+
+    def _advance(self) -> dict[str, Pose]:
+        now = self.clock()
+        self._poses = {name: actor.advance(now) for name, actor in self.actors.items()}
+        return self._poses
 
     def _rows(self) -> list[Strip]:
         width, height = self.size.width, self.size.height
         if width <= 0 or height <= 0:
             return []
         if self.color_mode == "text":
-            pose = self.actor.advance(self.clock())
-            self._pose = pose
-            text = TextLayout(width, height, self.actor.mood in AT_BENCH)
-            lines = text.lines(pose.frame, self.selected if self.has_focus else None)
+            poses = self._advance()
+            lines = self._text_layout().lines({n: p.action for n, p in poses.items()},
+                                              self.selected if self.has_focus else None)
             strips = [Strip([Segment(line, PLAIN)]).adjust_cell_length(width, PLAIN) for line in lines]
             return strips + [Strip.blank(width, PLAIN)] * (height - len(strips))
         if not self.geom.fits:
             note = fit("마당을 그릴 공간이 부족함 · 요청함과 상세 화면은 그대로 사용", width)
             return [Strip([Segment(note, PLAIN)]).adjust_cell_length(width, PLAIN)] + \
                 [Strip.blank(width, PLAIN)] * (height - 1)
-        pose = self.actor.advance(self.clock())
-        self._pose = pose
+        poses = self._advance()
         strips = []
-        for row in px.to_cells(self.compose_pixels(pose))[:height]:
+        for row in px.to_cells(self.compose_pixels(poses))[:height]:
             segments: list[Segment] = []
             run_style, run_text = None, []
             for cell in row:
@@ -442,7 +507,7 @@ class YardScreen(Screen):
     YardScreen { layout: vertical; }
     #yard-header { height: auto; max-height: 2; padding: 0 1; background: $panel; text-wrap: nowrap;
                    text-overflow: ellipsis; }
-    #stage { height: 1fr; min-height: 6; max-height: 20; }
+    #stage { height: 1fr; min-height: 6; max-height: 24; }
     #yard-status { height: 1; padding: 0 1; text-wrap: nowrap; text-overflow: ellipsis; }
     #yard-banner { height: auto; padding: 0 1; color: $error; display: none; }
     #inbox { height: auto; max-height: 8; border-top: solid $primary-darken-2; }

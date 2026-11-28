@@ -4,7 +4,9 @@ In an interactive terminal this opens the Textual console (``console.app``)
 on the pixel yard (``console.yard_screen``); details open in the tabbed
 console, which adds task selection, local verification, the flow, review,
 approval and a read-only preflight. ``--console`` opens the tabs directly. ``--once`` and non-interactive output print the
-read-only text screen exactly as before; ``--plain`` opens the earlier
+read-only text screen exactly as before; ``--once --json`` prints the same
+collection as one ``orca-orchestrator/snapshot@1`` JSON document instead
+(``snapshot_document``); ``--plain`` opens the earlier
 read-only interactive screen. Without Textual installed, the earlier screen
 opens with a note on how to install it.
 """
@@ -65,6 +67,9 @@ def build_parser() -> argparse.ArgumentParser:
         "읽기 전용 git 명령만 실행합니다.",
     )
     parser.add_argument("--once", action="store_true", help="화면을 한 번 출력하고 종료합니다.")
+    parser.add_argument("--json", action="store_true",
+                        help="--once와 함께: 같은 읽기 전용 조회 결과를 snapshot@1 JSON 문서 하나로 출력합니다 "
+                        "(GUI용 계약, docs/snapshot-v1.md).")
     parser.add_argument("--plain", action="store_true",
                         help="대화형 TUI 대신 기존 읽기 전용 화면(r 새로고침 · q 종료)을 엽니다.")
     parser.add_argument("--console", action="store_true",
@@ -130,6 +135,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--repo는 --tasks와 함께 써야 합니다.")
     if args.timeout <= 0:
         parser.error("--timeout은 0보다 커야 합니다.")
+    if args.json and not args.once:
+        parser.error("--json은 --once와 함께 써야 합니다.")
+    if args.json and (args.plain or args.console):
+        parser.error("--json은 --plain·--console과 함께 쓸 수 없습니다.")
 
     if args.demo:
         adapter, _ = demo_adapter(args.demo)
@@ -147,6 +156,13 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.reconfigure(errors="replace")
         except (AttributeError, ValueError):
             pass
+        if args.json:
+            import json
+
+            from .snapshot_document import snapshot_document
+
+            print(json.dumps(snapshot_document(collect()), ensure_ascii=False, indent=2))
+            return 0
         print("\n".join(render(collect())))
         return 0
     if args.plain:

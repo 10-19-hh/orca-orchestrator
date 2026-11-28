@@ -1,0 +1,238 @@
+{
+  "schema": "orca-orchestrator/snapshot@1",
+  "mode": "demo",
+  "demo": {
+    "scenario": "connected",
+    "note": "모의 상태 · 실제 CLI·실행·기록 없음"
+  },
+  "taken_at": "2026-11-28T06:00:00Z",
+  "runtime": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "health": "connected",
+    "status": {
+      "app_running": true,
+      "runtime_state": "ready",
+      "runtime_reachable": true,
+      "connection_state": "connected",
+      "app_version": "1.4.264",
+      "version_verified": true,
+      "connected": true
+    },
+    "error": null
+  },
+  "binding": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "terminal_handle_present": true
+  },
+  "run": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "state": "ok",
+    "run_id": "run_0123456789ab",
+    "objective": "Example objective",
+    "error_code": null
+  },
+  "dispatch": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "sends_work": false,
+    "experiment_4a_status": "CONDITIONAL",
+    "providers": [
+      {
+        "provider": "claude",
+        "outcome": "BLOCKED",
+        "reasons": [
+          {
+            "code": "real_dispatch_disabled",
+            "label": "실제 작업 전송이 기본값으로 꺼져 있음"
+          },
+          {
+            "code": "execution_approval_missing",
+            "label": "Worker 실행에 대한 사용자 승인 없음"
+          },
+          {
+            "code": "experiment_4a_not_passed",
+            "label": "Experiment 4-A 통과 전"
+          },
+          {
+            "code": "subscription_auth_unverified",
+            "label": "Worker 구독 인증 미확인"
+          },
+          {
+            "code": "billing_path_unverified",
+            "label": "구독 포함량만 쓰는 과금 경로 미확인"
+          },
+          {
+            "code": "extra_usage_not_confirmed_off",
+            "label": "추가 사용량·크레딧 사용 꺼짐 미확인"
+          },
+          {
+            "code": "auto_recharge_not_confirmed_off",
+            "label": "자동 충전 꺼짐 미확인"
+          },
+          {
+            "code": "worker_dispatch_contract_unverified",
+            "label": "worker-start 계약 미검증 (현재 빌드는 전송하지 않음)"
+          }
+        ],
+        "resume_after": null
+      },
+      {
+        "provider": "codex",
+        "outcome": "BLOCKED",
+        "reasons": [
+          {
+            "code": "real_dispatch_disabled",
+            "label": "실제 작업 전송이 기본값으로 꺼져 있음"
+          },
+          {
+            "code": "execution_approval_missing",
+            "label": "Worker 실행에 대한 사용자 승인 없음"
+          },
+          {
+            "code": "experiment_4a_not_passed",
+            "label": "Experiment 4-A 통과 전"
+          },
+          {
+            "code": "subscription_auth_unverified",
+            "label": "Worker 구독 인증 미확인"
+          },
+          {
+            "code": "billing_path_unverified",
+            "label": "구독 포함량만 쓰는 과금 경로 미확인"
+          },
+          {
+            "code": "extra_usage_not_confirmed_off",
+            "label": "추가 사용량·크레딧 사용 꺼짐 미확인"
+          },
+          {
+            "code": "auto_recharge_not_confirmed_off",
+            "label": "자동 충전 꺼짐 미확인"
+          },
+          {
+            "code": "worker_dispatch_contract_unverified",
+            "label": "worker-start 계약 미검증 (현재 빌드는 전송하지 않음)"
+          }
+        ],
+        "resume_after": null
+      }
+    ]
+  },
+  "tasks": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "not_configured",
+    "board_state": "not_configured",
+    "label": "",
+    "error": null,
+    "issues": [],
+    "tasks": [],
+    "requirements": [],
+    "next": null,
+    "blockers": []
+  },
+  "flow": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "not_configured",
+    "status": null,
+    "error": null
+  },
+  "review": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "not_configured",
+    "state": null
+  },
+  "recovery": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "not_configured",
+    "tasks": [],
+    "next_task": null,
+    "error": null
+  },
+  "workers": {
+    "live": {
+      "source": "none",
+      "judgment": "observed",
+      "availability": "not_implemented",
+      "items": []
+    },
+    "recorded": {
+      "source": "demo",
+      "judgment": "observed",
+      "availability": "unknown",
+      "items": []
+    }
+  },
+  "mascots": [
+    {
+      "id": "codex",
+      "name": "Codex 펫",
+      "theme_agent": "codex",
+      "role": "companion",
+      "worker": null,
+      "worker_actions_allowed": false,
+      "worker_actions": [
+        "build",
+        "type"
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude 펫",
+      "theme_agent": "claude",
+      "role": "companion",
+      "worker": null,
+      "worker_actions_allowed": false,
+      "worker_actions": [
+        "build",
+        "type"
+      ]
+    }
+  ],
+  "presentation": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "mood": "idle",
+    "mark": "·",
+    "tag": "muted",
+    "label": "· 작업 목록 없음 (--tasks로 지정) · 대기",
+    "task_id": null,
+    "local_run": {
+      "availability": "unknown",
+      "value": null
+    }
+  },
+  "requests": [],
+  "not_included": [
+    {
+      "field": "local_run",
+      "why": "이 화면에서 시작한 로컬 검증은 그 콘솔 프로세스의 메모리에만 있음"
+    },
+    {
+      "field": "action_progress",
+      "why": "검증·흐름 진행 이벤트는 실행한 콘솔에만 전달됨"
+    },
+    {
+      "field": "request_read_state",
+      "why": "읽음 표시는 화면마다 다름 (화면 쪽 상태)"
+    },
+    {
+      "field": "mascot_pose",
+      "why": "펫 좌표·프레임·카메라·선택은 화면 쪽 표현 상태"
+    },
+    {
+      "field": "live_worker_activity",
+      "why": "이 빌드는 Worker 작업을 실시간으로 관측하지 않음"
+    }
+  ]
+}

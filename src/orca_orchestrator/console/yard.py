@@ -60,7 +60,11 @@ MOOD_TAGS = {
     Mood.FAILED: "bad", Mood.END_UNKNOWN: "warn", Mood.PASSED: "ok", Mood.REVIEW: "ok", Mood.APPROVED: "ok",
     Mood.WAITING_RESET: "muted", Mood.PROBLEM: "bad",
 }
-AT_BENCH = frozenset({Mood.WORKING, Mood.OTHER_SESSION})
+# Moods that send the pets to the desk monitor to watch. Only a local check started in this console: the pets
+# watch it and do not work on it. Another session's run is not theirs to watch: they wait where they are, and
+# nothing here says which agent (if any) runs it.
+AT_BENCH = frozenset({Mood.WORKING})
+WAITING_ON_OTHERS = frozenset({Mood.OTHER_SESSION})
 
 
 class RequestKind(str, Enum):
@@ -270,7 +274,7 @@ def yard_model(data: YardInput) -> YardModel:
 
     if data.local_run is not None:
         task, check = data.local_run
-        return model(Mood.WORKING, f"{task}/{check} 로컬 검증 실행 중 (이 화면)", task)
+        return model(Mood.WORKING, f"{task}/{check} 로컬 검증 실행 중 (이 화면 · Worker 아님)", task)
 
     if board is None:
         return model(Mood.NO_DATA, "조회 전 · 상태를 아직 모름", None)
@@ -281,7 +285,7 @@ def yard_model(data: YardInput) -> YardModel:
 
     other = _other_session(board)
     if other is not None:
-        return model(Mood.OTHER_SESSION, f"{other} 다른 세션 실행 중 (실행 기록 기준)", other)
+        return model(Mood.OTHER_SESSION, f"{other} 다른 세션 실행 중 (실행 기록 기준 · 실행 주체는 상세에서 확인)", other)
 
     if any(r.kind is RequestKind.RECORD_UNREADABLE for r in requests):
         return model(Mood.PROBLEM, "실행 기록을 읽을 수 없음 · 복구 탭 확인", None)
@@ -314,9 +318,9 @@ def yard_model(data: YardInput) -> YardModel:
 # --- demo scenes ---------------------------------------------------------------------------
 
 DEMO_SCENES: tuple[tuple[str, Mood, str], ...] = (
-    ("대기", Mood.IDLE, "대기 · 마당 산책"),
-    ("시작", Mood.WORKING, "T-1/unit-tests 로컬 검증 시작 (모의)"),
-    ("작업", Mood.WORKING, "T-1/unit-tests 로컬 검증 실행 중 (모의)"),
+    ("대기", Mood.IDLE, "대기 · 마당 산책 (모의)"),
+    ("시작", Mood.WORKING, "T-1/unit-tests 로컬 검증 시작 (모의 · Worker 아님)"),
+    ("작업", Mood.WORKING, "T-1/unit-tests 로컬 검증 실행 중 (모의 · Worker 아님)"),
     ("확인 요청", Mood.END_UNKNOWN, "T-1 확인 요청 (모의) · 상세에서 근거 확인"),
     ("검증 통과", Mood.PASSED, "T-1 검증 통과 (모의) · 최종 승인 아님"),
 )
