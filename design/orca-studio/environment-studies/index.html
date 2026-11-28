@@ -1,0 +1,45 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Orca Studio · Environment</title><style>
+:root { --bg:#f3efe7; --ink:#2b2622; --muted:#7a7066; --line:#d9d1c4; --card:#fbf8f2; --accent:#b4562f; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI",
+  "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+main { max-width: 1480px; margin: 0 auto; padding: 32px 24px 80px; }
+h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 40px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+h3 { font-size: 15px; margin: 18px 0 6px; }
+p, li { max-width: 78ch; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; display:block; }
+.row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px 16px; }
+.tag { display:inline-block; font-size:12px; padding:1px 7px; border:1px solid var(--line); border-radius:4px;
+  color:var(--muted); margin-right:6px; }
+.warn { border-color:#e0a63a; color:#8a5a00; background:#fff6e0; }
+.concept-only { border:1px dashed #b4562f; color:#b4562f; padding:2px 8px; font-size:12px; font-weight:600; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+table { border-collapse: collapse; font-size: 14px; }
+td, th { border-bottom:1px solid var(--line); padding:5px 10px; text-align:left; vertical-align:top; }
+.sw { display:inline-flex; flex-direction:column; width:66px; margin:0 6px 8px 0; font-size:11px; color:var(--muted); }
+.sw i { display:block; height:30px; border-radius:3px; border:1px solid rgba(0,0,0,.08); margin-bottom:3px; }
+nav a { margin-right: 14px; color: var(--accent); }
+.demo-banner { background:#fff3d6; border:1px solid #e3b65b; color:#6b4a00; padding:6px 12px; border-radius:4px;
+  display:inline-block; font-weight:600; font-size:13px; margin-bottom:12px; }
+</style></head><body><main><nav><a href="../index.html">← 목록</a></nav>
+<h1>Environment Design Sheet — Concept A</h1><p class="sub">16px 그리드, 바닥 y=84~258, 벽 높이 84px. 모든 가구는 같은 3/4 시점(윗면 + 앞면),
+왼쪽 위 광원, 그림자는 오른쪽 아래로 3px.</p>
+<h2>오브젝트 키트 (×3)</h2><img class="px " src="object-kit.png" width="1200" height="450" alt="kit" style="width:1200px;height:450px">
+<p>책상(모니터형·스탠드형), 검증 캐비닛, 상태 보드, LINK 장치(연결/끊김), 의자, 스툴, 안락의자, 플로어 램프, 원형 공용 테이블, 소파, 책장, 화분.</p>
+<h2>검증 장치 상태 (×3): 없음 · 부분 · 통과 · 실패 · 종료 미확인</h2><img class="px " src="verification-states.png" width="720" height="210" alt="station states" style="width:720px;height:210px">
+<p>상태는 화면 글자 + 켜진 램프 위치(위 통과 / 가운데 확인 필요 / 아래 실패) + 기호로 표시한다. 색만으로 구분하지 않는다.
+이 장치는 <b>기록된 결과</b>를 보여 준다. 실행 중 진행 표시는 snapshot@1에 없어서 그리지 않는다.</p>
+<h2>공간 구역·가림 (×2)</h2><img class="px " src="zones.png" width="960" height="540" alt="zones" style="width:960px;height:540px">
+<table><tr><th>구역</th><th>목적</th><th>상태 연결</th></tr>
+<tr><td style="color:#4f8fe0">Codex Station</td><td>Codex 펫의 정체성 공간 (모니터, <code>&gt;_</code> 포스터)</td><td>없음 — 존재 자체가 Worker 작업이 아님</td></tr>
+<tr><td style="color:#e08a3f">Claude Station</td><td>Claude 펫의 정체성 공간 (스탠드, 책, 선반)</td><td>없음</td></tr>
+<tr><td style="color:#3fb5a8">Verification Station</td><td>검증 기록의 환경 오브젝트</td><td><code>tasks[].checks[].state</code>, mood failed / end_unknown</td></tr>
+<tr><td style="color:#e05a8a">Status Board</td><td>작업 카드·확인 요청 깃발·승인 표식</td><td><code>tasks</code>, <code>requests</code>, <code>review.state</code></td></tr>
+<tr><td style="color:#5fd38a">LINK</td><td>Runtime 연결만</td><td><code>runtime.health</code></td></tr>
+<tr><td style="color:#9a6be0">Shared table</td><td>두 펫이 만나는 공용 공간 (장식)</td><td>없음</td></tr>
+<tr><td>Lounge / Nook</td><td>대기·휴식 동선의 끝</td><td>mood idle·ready에서 휴식</td></tr></table>
+<p>깊이 정렬: 모든 오브젝트와 펫은 바닥선(발 위치 / 가구 앞면 아래)이 작을수록 먼저 그린다. 벽 부착물(창·보드·포스터·LINK)은 항상 바닥 오브젝트보다 뒤.</p>
+</main></body></html>

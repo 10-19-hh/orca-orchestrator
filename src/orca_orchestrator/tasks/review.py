@@ -20,6 +20,7 @@ the base changes, or when something blocks approval again.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -342,6 +343,60 @@ def load_review(plan_path: str | Path, results_path: str | Path, repo: str | Pat
     return build_review(plan, plan_digest(data), results, code, record, error, run_blockers(resume))
 
 
+# --- what the person looked at -------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReviewBasis:
+    """The state a person reviewed, so an approval can be refused when it changed before they confirmed.
+
+    Taken from the review shown on screen (:func:`review_basis`) and compared
+    again under the results lock by :func:`record_decision`.
+    """
+
+    plan_digest: str
+    source_digest: str | None
+    base_sha: str | None
+    changes_digest: str | None
+    evidence_digest: str  # every check's state and recorded result, as judged
+    unlinked: tuple[str, ...]  # changes no task covers, which the person confirms
+    decision: tuple[str, str] | None  # (decision, at) of the decision on file, if any
+
+
+BASIS_LABELS = (
+    ("plan_digest", "작업 정의"),
+    ("source_digest", "검증 대상 코드"),
+    ("base_sha", "비교 기준 커밋"),
+    ("changes_digest", "변경 파일"),
+    ("evidence_digest", "검증 결과"),
+    ("unlinked", "연결 없는 변경 목록"),
+    ("decision", "기존 승인 기록"),
+)
+
+
+def review_basis(review: Review) -> ReviewBasis:
+    evidence = []
+    for tp in review.progress.tasks:
+        for cp in tp.checks:
+            r = cp.result
+            evidence.append([tp.task.task_id, cp.check.check_id, cp.state.value,
+                             *([r.outcome.value, r.exit_code, r.evidence, r.check_digest, r.source_digest]
+                               if r is not None else [None] * 5)])
+    text = json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
+    record = review.record
+    return ReviewBasis(
+        review.plan_digest, review.code.source.digest, review.code.changes.base_sha, review.code.changes.digest,
+        hashlib.sha256(text.encode("utf-8")).hexdigest()[:16], tuple(c.path for c in review.unlinked),
+        (record.decision.value, record.at) if record is not None else None,
+    )
+
+
+def basis_changes(expected: ReviewBasis, current: ReviewBasis) -> tuple[str, ...]:
+    """What differs between the reviewed state and the state now, as labels."""
+
+    return tuple(label for name, label in BASIS_LABELS if getattr(expected, name) != getattr(current, name))
+
+
 # --- recording the person's decision -------------------------------------------
 
 
@@ -394,11 +449,15 @@ def record_decision(
     git: GitReader | None = None,
     lock_timeout: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    expected: ReviewBasis | None = None,
 ) -> tuple[Review, Path]:
     """Re-reads everything under the results lock, checks, and writes the decision file.
 
     Approval is refused (nothing written) unless every blocker is clear and,
     when changes no task covers exist, ``confirm_unlinked`` is given.
+    With ``expected`` (what the person reviewed on screen), approval is also
+    refused when the plan, the code, the change set, the results or the
+    decision on file changed since; the person reviews again.
     A hold can always be recorded and needs a ``note``.
     """
 
@@ -414,6 +473,10 @@ def record_decision(
             if any(b.kind is BlockKind.RECORD for b in review.blockers):
                 raise DecisionRefused(f"기존 승인 기록을 읽을 수 없어 덮어쓰지 않음 ({target.name})", review)
             if decision is Decision.APPROVED:
+                changed = basis_changes(expected, review_basis(review)) if expected is not None else ()
+                if changed:
+                    raise DecisionRefused(
+                        f"검토한 뒤 바뀜 ({', '.join(changed)}) · 바뀐 내용을 다시 검토한 뒤 승인", review)
                 if not review.approvable:
                     raise DecisionRefused(f"승인할 수 없음 · 보류 사유 {len(review.blockers)}건", review)
                 if review.unlinked and not confirm_unlinked:

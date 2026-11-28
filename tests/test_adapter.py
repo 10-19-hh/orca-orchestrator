@@ -263,6 +263,23 @@ class CliResolutionTest(unittest.TestCase):
         with self.assertRaises(CliUnavailableError):
             resolve_cli(None, {"LOCALAPPDATA": str(ROOT / "nonexistent")})
 
+    def test_bin_dir_inherited_from_an_orca_terminal(self):
+        import os
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            name = "orca.exe" if os.name == "nt" else "orca"
+            env = {"ORCA_CLI_BIN_DIR": tmp, "PATH": tmp}
+            with self.assertRaises(CliUnavailableError):  # folder without the CLI
+                resolve_cli(None, env)
+            (Path(tmp) / name).write_text("", encoding="utf-8")
+            self.assertEqual(resolve_cli(None, env), str(Path(tmp) / name))
+            self.assertEqual(resolve_cli(None, {**env, "ORCA_CLI_COMMAND": "B"}), "B")
+            self.assertEqual(resolve_cli("A", env), "A")
+            with self.assertRaises(CliUnavailableError):  # PATH alone is never searched
+                resolve_cli(None, {"PATH": tmp})
+
 
 class SubprocessRunnerTest(unittest.TestCase):
     """Exercises the real runner against Python, not Orca."""

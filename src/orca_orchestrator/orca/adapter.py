@@ -39,6 +39,8 @@ from .workers import WorkerObservation, worker_observation, worker_show_args
 PINNED_ORCA_VERSIONS = frozenset({"1.4.264"})
 
 CLI_OVERRIDE_ENV = "ORCA_CLI_COMMAND"
+# Folder of the bundled CLI that Orca puts into its own terminals (observed on macOS with Orca 1.4.268).
+CLI_BIN_DIR_ENV = "ORCA_CLI_BIN_DIR"
 TERMINAL_HANDLE_ENV = "ORCA_TERMINAL_HANDLE"
 
 # Observed form: "run_" followed by 12 lowercase hex characters, e.g. run_0123456789ab
@@ -49,10 +51,12 @@ DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
 def resolve_cli(explicit: str | None = None, environ: Mapping[str, str] | None = None) -> str:
-    """Pick the Orca CLI deterministically: explicit > ORCA_CLI_COMMAND > installed path.
+    """Pick the Orca CLI deterministically: explicit > ORCA_CLI_COMMAND > installed path > ORCA_CLI_BIN_DIR.
 
-    The value is treated as a single executable path, never split by a shell.
-    There is no fallback to another binary after a failure.
+    ``ORCA_CLI_BIN_DIR`` is inherited from an Orca terminal; ``PATH`` is not
+    searched (another program may be called ``orca``). The value is treated as
+    a single executable path, never split by a shell. There is no fallback to
+    another binary after a failure.
     """
 
     env = os.environ if environ is None else environ
@@ -66,6 +70,12 @@ def resolve_cli(explicit: str | None = None, environ: Mapping[str, str] | None =
         candidate = Path(local_app_data) / "Programs" / "orca" / "resources" / "bin" / "orca.exe"
         if candidate.is_file():
             return str(candidate)
+    bin_dir = env.get(CLI_BIN_DIR_ENV)
+    if bin_dir:
+        for name in ("orca.exe", "orca") if os.name == "nt" else ("orca",):
+            candidate = Path(bin_dir) / name
+            if candidate.is_file():
+                return str(candidate)
     raise CliUnavailableError(
         f"Orca CLI not found. Set {CLI_OVERRIDE_ENV} to the installed orca executable."
     )

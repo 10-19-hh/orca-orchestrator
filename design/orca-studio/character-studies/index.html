@@ -1,0 +1,43 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Orca Studio · Characters</title><style>
+:root { --bg:#f3efe7; --ink:#2b2622; --muted:#7a7066; --line:#d9d1c4; --card:#fbf8f2; --accent:#b4562f; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI",
+  "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+main { max-width: 1480px; margin: 0 auto; padding: 32px 24px 80px; }
+h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 40px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+h3 { font-size: 15px; margin: 18px 0 6px; }
+p, li { max-width: 78ch; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; display:block; }
+.row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px 16px; }
+.tag { display:inline-block; font-size:12px; padding:1px 7px; border:1px solid var(--line); border-radius:4px;
+  color:var(--muted); margin-right:6px; }
+.warn { border-color:#e0a63a; color:#8a5a00; background:#fff6e0; }
+.concept-only { border:1px dashed #b4562f; color:#b4562f; padding:2px 8px; font-size:12px; font-weight:600; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+table { border-collapse: collapse; font-size: 14px; }
+td, th { border-bottom:1px solid var(--line); padding:5px 10px; text-align:left; vertical-align:top; }
+.sw { display:inline-flex; flex-direction:column; width:66px; margin:0 6px 8px 0; font-size:11px; color:var(--muted); }
+.sw i { display:block; height:30px; border-radius:3px; border:1px solid rgba(0,0,0,.08); margin-bottom:3px; }
+nav a { margin-right: 14px; color: var(--accent); }
+.demo-banner { background:#fff3d6; border:1px solid #e3b65b; color:#6b4a00; padding:6px 12px; border-radius:4px;
+  display:inline-block; font-weight:600; font-size:13px; margin-bottom:12px; }
+</style></head><body><main><nav><a href="../index.html">← 목록</a></nav>
+<h1>Character Design Sheet</h1><p class="sub">32×32 캔버스(제작 크기), 발 사이 바닥 중앙이 기준점(주황 점).
+모든 크기는 같은 형태 계획에서 다시 그렸다(확대·축소 아님). 왼쪽 위 광원, 검정 외곽선 대신 형태 색의 어두운 색조.</p>
+<h2>크기 비교 — 16 / 32 / 48 (×4)</h2><img class="px " src="size-compare.png" width="896" height="240" alt="size compare" style="width:896px;height:240px">
+<p>16은 표정이 2픽셀로 줄어 상태 반응을 읽기 어렵다. 48은 방(480×270) 안에서 가구 대비 너무 크다. <b>32를 채택</b>하고, 48은 Inspector 초상용 후보로만 둔다.</p>
+<h2>실제 GUI 표시 크기 (방 안, ×2 = 화면 100%)</h2><img class="px " src="in-room-crop.png" width="240" height="136" alt="in room" style="width:240px;height:136px">
+<p>선택 표시는 발밑 점선 고리 하나(과한 테두리·화살표 없음).</p>
+<h2>표정 (×5): neutral, blink, happy, attention, unknown, fail, rest</h2><img class="px " src="expressions.png" width="1300" height="380" alt="expressions" style="width:1300px;height:380px">
+<p>Codex는 얼굴 화면의 기호, Claude는 눈 모양·팔 자세로 표현한다. <code>fail</code>은 검증 장치를 보고 놀라는 반응용이며
+"이 펫이 실패했다"는 뜻으로 쓰지 않는다(실패의 주체는 검증 장치). <code>rest</code>는 휴식 장식.</p>
+<h2>방향·프레임 (×5): 정면 · 호흡 · 측면 · 걷기 · 측면 호흡 · 깜빡임</h2><img class="px " src="views-frames.png" width="1120" height="380" alt="views" style="width:1120px;height:380px">
+<h2>32×32 캔버스 (×10)</h2><div class="row"><img class="px " src="codex-canvas32.png" width="320" height="320" alt="codex canvas" style="width:320px;height:320px"><img class="px " src="claude-canvas32.png" width="320" height="320" alt="claude canvas" style="width:320px;height:320px"></div>
+<h2>팔레트</h2><h3>Codex</h3><div><span class="sw"><i style="background:rgb(169, 210, 247)"></i>cloud</span><span class="sw"><i style="background:rgb(53, 84, 143)"></i>cloud_rim</span><span class="sw"><i style="background:rgb(22, 33, 63)"></i>screen</span><span class="sw"><i style="background:rgb(13, 21, 48)"></i>screen_rim</span><span class="sw"><i style="background:rgb(127, 240, 255)"></i>glyph</span><span class="sw"><i style="background:rgb(60, 127, 154)"></i>glyph_dim</span><span class="sw"><i style="background:rgb(223, 231, 241)"></i>body</span><span class="sw"><i style="background:rgb(77, 92, 126)"></i>body_rim</span><span class="sw"><i style="background:rgb(143, 163, 196)"></i>joint</span><span class="sw"><i style="background:rgb(127, 240, 255)"></i>lamp</span><span class="sw"><i style="background:rgb(255, 207, 90)"></i>warn</span><span class="sw"><i style="background:rgb(255, 138, 122)"></i>bad</span></div><h3>Claude</h3><div><span class="sw"><i style="background:rgb(226, 122, 76)"></i>body</span><span class="sw"><i style="background:rgb(130, 51, 31)"></i>rim</span><span class="sw"><i style="background:rgb(196, 96, 58)"></i>leg</span><span class="sw"><i style="background:rgb(42, 23, 18)"></i>eye</span><span class="sw"><i style="background:rgb(255, 244, 230)"></i>spark</span><span class="sw"><i style="background:rgb(242, 160, 124)"></i>blush</span></div>
+<h2>유지·변경</h2><table><tr><th></th><th>유지 (TUI 정체성)</th><th>바뀐 것</th></tr>
+<tr><td>Codex</td><td>파란 구름 머리, 남색 화면 얼굴, <code>&gt;_</code></td><td>12×12 → 32×32, 3단 명암, 흰 몸통과 가슴 램프, 화면 기호로 표정</td></tr>
+<tr><td>Claude</td><td>주황 크리터, 옆으로 뻗은 팔, 짧은 다리</td><td>14×7 → 32×32(실제 몸 26×19), 둥근 모서리, 세로 눈, 볼 터치, 팔 자세로 감정</td></tr></table>
+</main></body></html>
