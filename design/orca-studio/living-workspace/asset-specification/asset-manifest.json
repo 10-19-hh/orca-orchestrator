@@ -1,0 +1,2026 @@
+{
+ "schema": "orca-studio/asset-manifest@0",
+ "note": "제작 요구사항. 모든 항목은 아직 만들어지지 않음(status spec)",
+ "projection": "isometric 2:1",
+ "tile_px": [
+  32,
+  16
+ ],
+ "zoom": "integer only, nearest neighbour",
+ "pivot_convention": "footprint origin corner on the floor (x, y, z=0) in sprite pixels",
+ "depth_sort": "ground point of the footprint centre; pets: their foot point; seat and chair back split so a seated pet sorts between them",
+ "environment": [
+  {
+   "asset_id": "environment.floor_oak",
+   "category": "environment",
+   "layer": "floor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    32,
+    16
+   ],
+   "pivot_px": [
+    16,
+    8
+   ],
+   "notes": "2:1 diamond, 4 plank rows, 5 tone variants",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.floor_edge",
+   "category": "environment",
+   "layer": "floor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    32,
+    24
+   ],
+   "pivot_px": [
+    16,
+    8
+   ],
+   "notes": "front slab edge, left and right faces",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.wall_back",
+   "category": "environment",
+   "layer": "wall",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    16,
+    76
+   ],
+   "pivot_px": [
+    0,
+    76
+   ],
+   "notes": "one tile of back wall (y=0 plane), baseboard included",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.wall_left",
+   "category": "environment",
+   "layer": "wall",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    16,
+    76
+   ],
+   "pivot_px": [
+    16,
+    76
+   ],
+   "notes": "one tile of left wall (x=0 plane)",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.wall_corner",
+   "category": "environment",
+   "layer": "wall",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    8,
+    80
+   ],
+   "pivot_px": [
+    4,
+    80
+   ],
+   "notes": "inner back-left corner and the two open wall ends",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.window_back",
+   "category": "environment",
+   "layer": "wall_decor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    36,
+    48
+   ],
+   "pivot_px": [
+    0,
+    46
+   ],
+   "notes": "2-tile window, back wall",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.window_left",
+   "category": "environment",
+   "layer": "wall_decor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    36,
+    48
+   ],
+   "pivot_px": [
+    36,
+    46
+   ],
+   "notes": "2-tile window, left wall",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.door_left",
+   "category": "environment",
+   "layer": "wall_decor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    24,
+    52
+   ],
+   "pivot_px": [
+    24,
+    40
+   ],
+   "notes": "entrance door, left wall; spawn and exit",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.whiteboard",
+   "category": "environment",
+   "layer": "wall_decor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    48,
+    40
+   ],
+   "pivot_px": [
+    0,
+    42
+   ],
+   "notes": "meeting whiteboard with notes",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.status_board",
+   "category": "environment",
+   "layer": "wall_decor",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    24,
+    26
+   ],
+   "pivot_px": [
+    0,
+    52
+   ],
+   "notes": "review board above the rack; shows attention when a request is open",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "light.sun_left",
+   "category": "light",
+   "layer": "light_overlay",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    64,
+    48
+   ],
+   "pivot_px": [
+    0,
+    0
+   ],
+   "notes": "warm floor patch from the left window (multiply/add)",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "light.sun_back",
+   "category": "light",
+   "layer": "light_overlay",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    64,
+    48
+   ],
+   "pivot_px": [
+    0,
+    0
+   ],
+   "notes": "warm floor patch and air shaft from the back window",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "light.lamp_pool",
+   "category": "light",
+   "layer": "light_overlay",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    48,
+    24
+   ],
+   "pivot_px": [
+    24,
+    12
+   ],
+   "notes": "floor lamp light pool",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "shadow.furniture_small",
+   "category": "shadow",
+   "layer": "shadow_overlay",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    40,
+    20
+   ],
+   "pivot_px": [
+    20,
+    10
+   ],
+   "notes": "contact shadow, 1x1 footprint",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "shadow.furniture_wide",
+   "category": "shadow",
+   "layer": "shadow_overlay",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    72,
+    36
+   ],
+   "pivot_px": [
+    36,
+    18
+   ],
+   "notes": "contact shadow, 2x1 footprint",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "shadow.pet",
+   "category": "shadow",
+   "layer": "shadow_overlay",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "native_px": [
+    16,
+    4
+   ],
+   "pivot_px": [
+    8,
+    2
+   ],
+   "notes": "pet foot shadow",
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  }
+ ],
+ "furniture": [
+  {
+   "asset_id": "device.verification_rack",
+   "category": "device",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    1.25,
+    0.75
+   ],
+   "height_px": 30,
+   "collision_footprint_tiles": [
+    1.25,
+    0.75
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "S"
+   ],
+   "interaction_points": [
+    {
+     "id": "review-view",
+     "kind": "review_view",
+     "offset_tiles": [
+      0.625,
+      1.25
+     ],
+     "facing": "N",
+     "pose_offset_tiles": null
+    }
+   ],
+   "notes": "local verification device; LEDs show recorded results, never an agent's work",
+   "native_px": [
+    34,
+    48
+   ],
+   "pivot_px": [
+    13,
+    31
+   ],
+   "depth_anchor_px": [
+    17,
+    39
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    34,
+    48
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "environment.doormat",
+   "category": "environment",
+   "layer": "floor_decal",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    1.0,
+    1.25
+   ],
+   "height_px": 0,
+   "collision_footprint_tiles": null,
+   "walkable_over": true,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [
+    {
+     "id": "spawn",
+     "kind": "spawn",
+     "offset_tiles": [
+      0.5,
+      0.625
+     ],
+     "facing": "E",
+     "pose_offset_tiles": null
+    },
+    {
+     "id": "exit",
+     "kind": "exit",
+     "offset_tiles": [
+      0.5,
+      0.625
+     ],
+     "facing": "W",
+     "pose_offset_tiles": null
+    }
+   ],
+   "notes": "entrance mat",
+   "native_px": [
+    38,
+    20
+   ],
+   "pivot_px": [
+    21,
+    1
+   ],
+   "depth_anchor_px": [
+    19,
+    10
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    38,
+    20
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.bookshelf",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    1.5,
+    0.625
+   ],
+   "height_px": 36,
+   "collision_footprint_tiles": [
+    1.5,
+    0.625
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "S"
+   ],
+   "interaction_points": [],
+   "notes": "storage against the back wall (wide rooms)",
+   "native_px": [
+    36,
+    55
+   ],
+   "pivot_px": [
+    11,
+    37
+   ],
+   "depth_anchor_px": [
+    18,
+    45
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    36,
+    55
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.cabinet_tall",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.875,
+    0.875
+   ],
+   "height_px": 34,
+   "collision_footprint_tiles": [
+    0.875,
+    0.875
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "S"
+   ],
+   "interaction_points": [],
+   "notes": "pantry cabinet or fridge",
+   "native_px": [
+    30,
+    50
+   ],
+   "pivot_px": [
+    15,
+    35
+   ],
+   "depth_anchor_px": [
+    15,
+    42
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    30,
+    50
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.coffee_machine",
+   "category": "furniture",
+   "layer": "prop",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.75,
+    0.625
+   ],
+   "height_px": 10,
+   "collision_footprint_tiles": null,
+   "walkable_over": true,
+   "orientations": [
+    "S"
+   ],
+   "interaction_points": [],
+   "notes": "sits on the counter (z 14)",
+   "native_px": [
+    24,
+    23
+   ],
+   "pivot_px": [
+    11,
+    11
+   ],
+   "depth_anchor_px": [
+    12,
+    16
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    24,
+    23
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.coffee_table",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.75,
+    1.25
+   ],
+   "height_px": 7,
+   "collision_footprint_tiles": [
+    0.75,
+    1.25
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [],
+   "notes": "lounge table",
+   "native_px": [
+    34,
+    25
+   ],
+   "pivot_px": [
+    21,
+    8
+   ],
+   "depth_anchor_px": [
+    17,
+    16
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    34,
+    25
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.credenza",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.875,
+    2.0
+   ],
+   "height_px": 11,
+   "collision_footprint_tiles": [
+    0.875,
+    2.0
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "W"
+   ],
+   "interaction_points": [],
+   "notes": "low storage, front-right corner of wide rooms",
+   "native_px": [
+    48,
+    36
+   ],
+   "pivot_px": [
+    33,
+    12
+   ],
+   "depth_anchor_px": [
+    24,
+    23
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    48,
+    36
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.desk_divider",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    2.0,
+    0.125
+   ],
+   "height_px": 22,
+   "collision_footprint_tiles": [
+    2.0,
+    0.125
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "EW"
+   ],
+   "interaction_points": [],
+   "notes": "low fabric screen between facing desks",
+   "native_px": [
+    36,
+    41
+   ],
+   "pivot_px": [
+    3,
+    23
+   ],
+   "depth_anchor_px": [
+    18,
+    31
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    36,
+    41
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.desk_modular",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    2.0,
+    1.0
+   ],
+   "height_px": 12,
+   "collision_footprint_tiles": [
+    2.0,
+    1.0
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "S",
+    "N"
+   ],
+   "interaction_points": [
+    {
+     "id": "seat_when_facing_S",
+     "kind": "seat",
+     "offset_tiles": [
+      1.0,
+      -0.75
+     ],
+     "facing": "S",
+     "pose_offset_tiles": [
+      1.0,
+      -0.75
+     ],
+     "seat_z_px": 7
+    },
+    {
+     "id": "seat_when_facing_N",
+     "kind": "seat",
+     "offset_tiles": [
+      1.0,
+      1.75
+     ],
+     "facing": "N",
+     "pose_offset_tiles": [
+      1.0,
+      1.75
+     ],
+     "seat_z_px": 7
+    }
+   ],
+   "notes": "2x1 tile desk; joins side by side and back to back; monitor, keyboard and personal props are separate sprites",
+   "native_px": [
+    50,
+    38
+   ],
+   "pivot_px": [
+    17,
+    13
+   ],
+   "depth_anchor_px": [
+    25,
+    25
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    50,
+    38
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.floor_lamp",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.375,
+    0.375
+   ],
+   "height_px": 32,
+   "collision_footprint_tiles": [
+    0.375,
+    0.375
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [],
+   "notes": "warm light pool overlay included",
+   "native_px": [
+    14,
+    40
+   ],
+   "pivot_px": [
+    7,
+    33
+   ],
+   "depth_anchor_px": [
+    7,
+    36
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    14,
+    40
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.meeting_table",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    2.25,
+    1.0
+   ],
+   "height_px": 11,
+   "collision_footprint_tiles": [
+    2.25,
+    1.0
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "EW"
+   ],
+   "interaction_points": [
+    {
+     "id": "meeting-1",
+     "kind": "meeting_seat",
+     "offset_tiles": [
+      0.5,
+      1.375
+     ],
+     "facing": "N",
+     "pose_offset_tiles": null
+    },
+    {
+     "id": "meeting-2",
+     "kind": "meeting_seat",
+     "offset_tiles": [
+      1.75,
+      1.375
+     ],
+     "facing": "N",
+     "pose_offset_tiles": null
+    },
+    {
+     "id": "meeting-3",
+     "kind": "meeting_seat",
+     "offset_tiles": [
+      -0.375,
+      0.5
+     ],
+     "facing": "E",
+     "pose_offset_tiles": null
+    },
+    {
+     "id": "meeting-4",
+     "kind": "meeting_seat",
+     "offset_tiles": [
+      2.625,
+      0.5
+     ],
+     "facing": "W",
+     "pose_offset_tiles": null
+    }
+   ],
+   "notes": "shared table in front of the whiteboard",
+   "native_px": [
+    54,
+    39
+   ],
+   "pivot_px": [
+    17,
+    12
+   ],
+   "depth_anchor_px": [
+    27,
+    25
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    54,
+    39
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.office_chair",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.5,
+    0.5
+   ],
+   "height_px": 16,
+   "collision_footprint_tiles": [
+    0.5,
+    0.5
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "S",
+    "N",
+    "E",
+    "W"
+   ],
+   "interaction_points": [
+    {
+     "id": "seat",
+     "kind": "seat",
+     "offset_tiles": [
+      0.25,
+      0.25
+     ],
+     "facing": "as placed",
+     "pose_offset_tiles": [
+      0.25,
+      0.25
+     ],
+     "seat_z_px": 7
+    }
+   ],
+   "notes": "seat and back are separate sprites so a seated pet sorts between them",
+   "native_px": [
+    18,
+    26
+   ],
+   "pivot_px": [
+    9,
+    17
+   ],
+   "depth_anchor_px": [
+    9,
+    21
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    18,
+    26
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.pantry_counter",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    2.75,
+    0.875
+   ],
+   "height_px": 14,
+   "collision_footprint_tiles": [
+    2.75,
+    0.875
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "S"
+   ],
+   "interaction_points": [
+    {
+     "id": "coffee",
+     "kind": "coffee",
+     "offset_tiles": [
+      0.625,
+      1.375
+     ],
+     "facing": "N",
+     "pose_offset_tiles": null
+    },
+    {
+     "id": "counter",
+     "kind": "counter",
+     "offset_tiles": [
+      1.875,
+      1.375
+     ],
+     "facing": "N",
+     "pose_offset_tiles": null
+    }
+   ],
+   "notes": "base cabinets with stone top; joins to cabinet_tall",
+   "native_px": [
+    60,
+    45
+   ],
+   "pivot_px": [
+    15,
+    15
+   ],
+   "depth_anchor_px": [
+    30,
+    29
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    60,
+    45
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.plant_tall",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.625,
+    0.625
+   ],
+   "height_px": 26,
+   "collision_footprint_tiles": [
+    0.625,
+    0.625
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [],
+   "notes": "pot + foliage; muted green",
+   "native_px": [
+    22,
+    38
+   ],
+   "pivot_px": [
+    11,
+    27
+   ],
+   "depth_anchor_px": [
+    11,
+    32
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    22,
+    38
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.printer_cart",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.875,
+    0.75
+   ],
+   "height_px": 13,
+   "collision_footprint_tiles": [
+    0.875,
+    0.75
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [],
+   "notes": "flex decor: removed when a desk cluster takes its spot",
+   "native_px": [
+    28,
+    28
+   ],
+   "pivot_px": [
+    13,
+    14
+   ],
+   "depth_anchor_px": [
+    14,
+    20
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    28,
+    28
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.rug",
+   "category": "furniture",
+   "layer": "floor_decal",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    3.0,
+    3.5
+   ],
+   "height_px": 0,
+   "collision_footprint_tiles": null,
+   "walkable_over": true,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [],
+   "notes": "lounge rug, under furniture",
+   "native_px": [
+    106,
+    54
+   ],
+   "pivot_px": [
+    57,
+    1
+   ],
+   "depth_anchor_px": [
+    53,
+    27
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    106,
+    54
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.sofa",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.875,
+    2.5
+   ],
+   "height_px": 16,
+   "collision_footprint_tiles": [
+    0.875,
+    2.5
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "E"
+   ],
+   "interaction_points": [
+    {
+     "id": "sofa-1",
+     "kind": "sofa_sit",
+     "offset_tiles": [
+      1.125,
+      0.625
+     ],
+     "facing": "E",
+     "pose_offset_tiles": [
+      0.5,
+      0.625
+     ]
+    },
+    {
+     "id": "sofa-2",
+     "kind": "sofa_sit",
+     "offset_tiles": [
+      1.125,
+      2.0
+     ],
+     "facing": "E",
+     "pose_offset_tiles": [
+      0.5,
+      2.0
+     ]
+    },
+    {
+     "id": "sofa-lie",
+     "kind": "sofa_lie",
+     "offset_tiles": [
+      1.125,
+      1.25
+     ],
+     "facing": "E",
+     "pose_offset_tiles": [
+      0.375,
+      1.25
+     ]
+    }
+   ],
+   "notes": "three-seat sofa against the left wall; sit and lie points",
+   "native_px": [
+    56,
+    45
+   ],
+   "pivot_px": [
+    41,
+    17
+   ],
+   "depth_anchor_px": [
+    28,
+    30
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    56,
+    45
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "furniture.stool",
+   "category": "furniture",
+   "layer": "object",
+   "projection": "isometric 2:1",
+   "tile_px": [
+    32,
+    16
+   ],
+   "footprint_tiles": [
+    0.5,
+    0.5
+   ],
+   "height_px": 7,
+   "collision_footprint_tiles": [
+    0.5,
+    0.5
+   ],
+   "walkable_over": false,
+   "orientations": [
+    "ANY"
+   ],
+   "interaction_points": [],
+   "notes": "meeting seat",
+   "native_px": [
+    18,
+    17
+   ],
+   "pivot_px": [
+    9,
+    8
+   ],
+   "depth_anchor_px": [
+    9,
+    12
+   ],
+   "bounding_box_px": [
+    0,
+    0,
+    18,
+    17
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  }
+ ],
+ "characters": [
+  {
+   "asset_id": "character.claude",
+   "category": "character",
+   "layer": "object",
+   "identity": "orange angular critter: wide rectangular body, side nubs, four short legs in two pairs, two square black eyes; no tentacles, no round octopus",
+   "frame_px": [
+    32,
+    32
+   ],
+   "pivot_px": [
+    16,
+    31
+   ],
+   "depth_anchor_px": [
+    16,
+    31
+   ],
+   "collision_footprint_tiles": [
+    0.375,
+    0.375
+   ],
+   "orientations": [
+    "SE",
+    "SW",
+    "NE",
+    "NW"
+   ],
+   "mirror_allowed": [
+    "SE<->SW",
+    "NE<->NW"
+   ],
+   "pixel_density": "same as furniture (1 px = 1 px at integer zoom); outline: darker hue of the form",
+   "animations": [
+    {
+     "name": "idle",
+     "frames": 4,
+     "frame_ms": 260,
+     "loop": "loop",
+     "plays_when": "intent ambient or unobservable (neutral variant)"
+    },
+    {
+     "name": "walk",
+     "frames": 4,
+     "frame_ms": 140,
+     "loop": "loop",
+     "plays_when": "any move between points; 4 directions (SE, SW, NE, NW), NE/NW may mirror"
+    },
+    {
+     "name": "look_around",
+     "frames": 6,
+     "frame_ms": 180,
+     "loop": "once",
+     "plays_when": "ambient"
+    },
+    {
+     "name": "sit_down",
+     "frames": 3,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "arriving at a seat"
+    },
+    {
+     "name": "stand_up",
+     "frames": 3,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "intent work_done, or leaving a seat"
+    },
+    {
+     "name": "work",
+     "frames": 4,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "intent work (generic: no typing, thinking or building claim)"
+    },
+    {
+     "name": "typing",
+     "frames": 4,
+     "frame_ms": 120,
+     "loop": "loop",
+     "plays_when": "only with a future observed typing signal; not available in topology@1"
+    },
+    {
+     "name": "thinking",
+     "frames": 6,
+     "frame_ms": 200,
+     "loop": "loop",
+     "plays_when": "only with a future observed thinking signal; not available in topology@1"
+    },
+    {
+     "name": "building",
+     "frames": 6,
+     "frame_ms": 160,
+     "loop": "loop",
+     "plays_when": "only with a future observed build signal; not available in topology@1"
+    },
+    {
+     "name": "coffee",
+     "frames": 6,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "ambient at coffee or counter point"
+    },
+    {
+     "name": "eat",
+     "frames": 6,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "ambient at counter point"
+    },
+    {
+     "name": "sit_sofa",
+     "frames": 2,
+     "frame_ms": 600,
+     "loop": "loop",
+     "plays_when": "ambient at sofa_sit"
+    },
+    {
+     "name": "sleep",
+     "frames": 4,
+     "frame_ms": 500,
+     "loop": "loop",
+     "plays_when": "ambient at sofa_lie (decorative nap, not a session state)"
+    },
+    {
+     "name": "stretch",
+     "frames": 6,
+     "frame_ms": 150,
+     "loop": "once",
+     "plays_when": "ambient"
+    },
+    {
+     "name": "sweep",
+     "frames": 6,
+     "frame_ms": 160,
+     "loop": "loop",
+     "plays_when": "ambient wander"
+    },
+    {
+     "name": "chat",
+     "frames": 4,
+     "frame_ms": 260,
+     "loop": "loop",
+     "plays_when": "two ambient pets at meeting seats (decorative, never claims agents talk)"
+    },
+    {
+     "name": "happy",
+     "frames": 6,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "intent work_done (short, then stand_up)"
+    },
+    {
+     "name": "notification",
+     "frames": 4,
+     "frame_ms": 180,
+     "loop": "loop",
+     "plays_when": "intent attention: '!' bubble at the own desk"
+    },
+    {
+     "name": "finishing",
+     "frames": 4,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "intent finishing: '...' bubble, still seated"
+    },
+    {
+     "name": "unknown",
+     "frames": 4,
+     "frame_ms": 320,
+     "loop": "loop",
+     "plays_when": "intent unobservable: dimmed, '?' bubble, seat kept"
+    },
+    {
+     "name": "error",
+     "frames": 4,
+     "frame_ms": 200,
+     "loop": "loop",
+     "plays_when": "reserved for an observed error state; topology@1 has none"
+    },
+    {
+     "name": "enter",
+     "frames": 6,
+     "frame_ms": 140,
+     "loop": "once",
+     "plays_when": "presentation.new: from the door to the assigned seat or an ambient point"
+    },
+    {
+     "name": "exit",
+     "frames": 6,
+     "frame_ms": 140,
+     "loop": "once",
+     "plays_when": "intent exit only (confirmed end): walk to the door, fade at the threshold"
+    }
+   ],
+   "bubbles": [
+    "attention '!'",
+    "unknown '?'",
+    "finishing '...'",
+    "done '+'",
+    "sleep 'Z'"
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "character.codex",
+   "category": "character",
+   "layer": "object",
+   "identity": "blue cloud head, dark terminal screen face with '>_', small light robot body, short arms and legs",
+   "frame_px": [
+    32,
+    32
+   ],
+   "pivot_px": [
+    16,
+    31
+   ],
+   "depth_anchor_px": [
+    16,
+    31
+   ],
+   "collision_footprint_tiles": [
+    0.375,
+    0.375
+   ],
+   "orientations": [
+    "SE",
+    "SW",
+    "NE",
+    "NW"
+   ],
+   "mirror_allowed": [
+    "SE<->SW",
+    "NE<->NW"
+   ],
+   "pixel_density": "same as furniture (1 px = 1 px at integer zoom); outline: darker hue of the form",
+   "animations": [
+    {
+     "name": "idle",
+     "frames": 4,
+     "frame_ms": 260,
+     "loop": "loop",
+     "plays_when": "intent ambient or unobservable (neutral variant)"
+    },
+    {
+     "name": "walk",
+     "frames": 4,
+     "frame_ms": 140,
+     "loop": "loop",
+     "plays_when": "any move between points; 4 directions (SE, SW, NE, NW), NE/NW may mirror"
+    },
+    {
+     "name": "look_around",
+     "frames": 6,
+     "frame_ms": 180,
+     "loop": "once",
+     "plays_when": "ambient"
+    },
+    {
+     "name": "sit_down",
+     "frames": 3,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "arriving at a seat"
+    },
+    {
+     "name": "stand_up",
+     "frames": 3,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "intent work_done, or leaving a seat"
+    },
+    {
+     "name": "work",
+     "frames": 4,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "intent work (generic: no typing, thinking or building claim)"
+    },
+    {
+     "name": "typing",
+     "frames": 4,
+     "frame_ms": 120,
+     "loop": "loop",
+     "plays_when": "only with a future observed typing signal; not available in topology@1"
+    },
+    {
+     "name": "thinking",
+     "frames": 6,
+     "frame_ms": 200,
+     "loop": "loop",
+     "plays_when": "only with a future observed thinking signal; not available in topology@1"
+    },
+    {
+     "name": "building",
+     "frames": 6,
+     "frame_ms": 160,
+     "loop": "loop",
+     "plays_when": "only with a future observed build signal; not available in topology@1"
+    },
+    {
+     "name": "coffee",
+     "frames": 6,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "ambient at coffee or counter point"
+    },
+    {
+     "name": "eat",
+     "frames": 6,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "ambient at counter point"
+    },
+    {
+     "name": "sit_sofa",
+     "frames": 2,
+     "frame_ms": 600,
+     "loop": "loop",
+     "plays_when": "ambient at sofa_sit"
+    },
+    {
+     "name": "sleep",
+     "frames": 4,
+     "frame_ms": 500,
+     "loop": "loop",
+     "plays_when": "ambient at sofa_lie (decorative nap, not a session state)"
+    },
+    {
+     "name": "stretch",
+     "frames": 6,
+     "frame_ms": 150,
+     "loop": "once",
+     "plays_when": "ambient"
+    },
+    {
+     "name": "sweep",
+     "frames": 6,
+     "frame_ms": 160,
+     "loop": "loop",
+     "plays_when": "ambient wander"
+    },
+    {
+     "name": "chat",
+     "frames": 4,
+     "frame_ms": 260,
+     "loop": "loop",
+     "plays_when": "two ambient pets at meeting seats (decorative, never claims agents talk)"
+    },
+    {
+     "name": "happy",
+     "frames": 6,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "intent work_done (short, then stand_up)"
+    },
+    {
+     "name": "notification",
+     "frames": 4,
+     "frame_ms": 180,
+     "loop": "loop",
+     "plays_when": "intent attention: '!' bubble at the own desk"
+    },
+    {
+     "name": "finishing",
+     "frames": 4,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "intent finishing: '...' bubble, still seated"
+    },
+    {
+     "name": "unknown",
+     "frames": 4,
+     "frame_ms": 320,
+     "loop": "loop",
+     "plays_when": "intent unobservable: dimmed, '?' bubble, seat kept"
+    },
+    {
+     "name": "error",
+     "frames": 4,
+     "frame_ms": 200,
+     "loop": "loop",
+     "plays_when": "reserved for an observed error state; topology@1 has none"
+    },
+    {
+     "name": "enter",
+     "frames": 6,
+     "frame_ms": 140,
+     "loop": "once",
+     "plays_when": "presentation.new: from the door to the assigned seat or an ambient point"
+    },
+    {
+     "name": "exit",
+     "frames": 6,
+     "frame_ms": 140,
+     "loop": "once",
+     "plays_when": "intent exit only (confirmed end): walk to the door, fade at the threshold"
+    }
+   ],
+   "bubbles": [
+    "attention '!'",
+    "unknown '?'",
+    "finishing '...'",
+    "done '+'",
+    "sleep 'Z'"
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  },
+  {
+   "asset_id": "character.unknown_agent",
+   "category": "character",
+   "layer": "object",
+   "identity": "neutral grey box-shaped pet for provider unknown or other; never recoloured Claude or Codex",
+   "frame_px": [
+    32,
+    32
+   ],
+   "pivot_px": [
+    16,
+    31
+   ],
+   "depth_anchor_px": [
+    16,
+    31
+   ],
+   "collision_footprint_tiles": [
+    0.375,
+    0.375
+   ],
+   "orientations": [
+    "SE",
+    "SW",
+    "NE",
+    "NW"
+   ],
+   "mirror_allowed": [
+    "SE<->SW",
+    "NE<->NW"
+   ],
+   "pixel_density": "same as furniture (1 px = 1 px at integer zoom); outline: darker hue of the form",
+   "animations": [
+    {
+     "name": "idle",
+     "frames": 4,
+     "frame_ms": 260,
+     "loop": "loop",
+     "plays_when": "intent ambient or unobservable (neutral variant)"
+    },
+    {
+     "name": "walk",
+     "frames": 4,
+     "frame_ms": 140,
+     "loop": "loop",
+     "plays_when": "any move between points; 4 directions (SE, SW, NE, NW), NE/NW may mirror"
+    },
+    {
+     "name": "look_around",
+     "frames": 6,
+     "frame_ms": 180,
+     "loop": "once",
+     "plays_when": "ambient"
+    },
+    {
+     "name": "sit_down",
+     "frames": 3,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "arriving at a seat"
+    },
+    {
+     "name": "stand_up",
+     "frames": 3,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "intent work_done, or leaving a seat"
+    },
+    {
+     "name": "work",
+     "frames": 4,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "intent work (generic: no typing, thinking or building claim)"
+    },
+    {
+     "name": "typing",
+     "frames": 4,
+     "frame_ms": 120,
+     "loop": "loop",
+     "plays_when": "only with a future observed typing signal; not available in topology@1"
+    },
+    {
+     "name": "thinking",
+     "frames": 6,
+     "frame_ms": 200,
+     "loop": "loop",
+     "plays_when": "only with a future observed thinking signal; not available in topology@1"
+    },
+    {
+     "name": "building",
+     "frames": 6,
+     "frame_ms": 160,
+     "loop": "loop",
+     "plays_when": "only with a future observed build signal; not available in topology@1"
+    },
+    {
+     "name": "coffee",
+     "frames": 6,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "ambient at coffee or counter point"
+    },
+    {
+     "name": "eat",
+     "frames": 6,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "ambient at counter point"
+    },
+    {
+     "name": "sit_sofa",
+     "frames": 2,
+     "frame_ms": 600,
+     "loop": "loop",
+     "plays_when": "ambient at sofa_sit"
+    },
+    {
+     "name": "sleep",
+     "frames": 4,
+     "frame_ms": 500,
+     "loop": "loop",
+     "plays_when": "ambient at sofa_lie (decorative nap, not a session state)"
+    },
+    {
+     "name": "stretch",
+     "frames": 6,
+     "frame_ms": 150,
+     "loop": "once",
+     "plays_when": "ambient"
+    },
+    {
+     "name": "sweep",
+     "frames": 6,
+     "frame_ms": 160,
+     "loop": "loop",
+     "plays_when": "ambient wander"
+    },
+    {
+     "name": "chat",
+     "frames": 4,
+     "frame_ms": 260,
+     "loop": "loop",
+     "plays_when": "two ambient pets at meeting seats (decorative, never claims agents talk)"
+    },
+    {
+     "name": "happy",
+     "frames": 6,
+     "frame_ms": 120,
+     "loop": "once",
+     "plays_when": "intent work_done (short, then stand_up)"
+    },
+    {
+     "name": "notification",
+     "frames": 4,
+     "frame_ms": 180,
+     "loop": "loop",
+     "plays_when": "intent attention: '!' bubble at the own desk"
+    },
+    {
+     "name": "finishing",
+     "frames": 4,
+     "frame_ms": 220,
+     "loop": "loop",
+     "plays_when": "intent finishing: '...' bubble, still seated"
+    },
+    {
+     "name": "unknown",
+     "frames": 4,
+     "frame_ms": 320,
+     "loop": "loop",
+     "plays_when": "intent unobservable: dimmed, '?' bubble, seat kept"
+    },
+    {
+     "name": "error",
+     "frames": 4,
+     "frame_ms": 200,
+     "loop": "loop",
+     "plays_when": "reserved for an observed error state; topology@1 has none"
+    },
+    {
+     "name": "enter",
+     "frames": 6,
+     "frame_ms": 140,
+     "loop": "once",
+     "plays_when": "presentation.new: from the door to the assigned seat or an ambient point"
+    },
+    {
+     "name": "exit",
+     "frames": 6,
+     "frame_ms": 140,
+     "loop": "once",
+     "plays_when": "intent exit only (confirmed end): walk to the door, fade at the threshold"
+    }
+   ],
+   "bubbles": [
+    "attention '!'",
+    "unknown '?'",
+    "finishing '...'",
+    "done '+'",
+    "sleep 'Z'"
+   ],
+   "license": "project-original (to be drawn; rights held by the project owner)",
+   "third_party": null,
+   "source": "not produced yet - geometry from tools/layout.py",
+   "status": "spec"
+  }
+ ]
+}
