@@ -1,0 +1,24 @@
+{
+  "schema": "orca-studio/scene-layout@0 (draft)",
+  "room": "studio_a",
+  "size": [480, 270],
+  "floor": { "top": 84, "bottom": 258, "walkable": [[8, 132, 464, 126]] },
+  "wall_objects": [
+    { "id": "window_l", "sprite": "window_a", "at": [22, 14] },
+    { "id": "board", "sprite": "board_status_a", "at": [194, 8], "binds": ["tasks", "requests", "review.state"] },
+    { "id": "link", "sprite": "device_link", "at": [148, 36], "binds": ["runtime.health"] },
+    { "id": "poster_codex", "sprite": "poster_prompt", "at": [110, 18] }
+  ],
+  "floor_objects": [
+    { "id": "desk_codex", "sprite": "desk_monitor_a", "pivot_at": [52, 114], "zone": "codex_station", "blocks": [52, 88, 84, 26] },
+    { "id": "station", "sprite": "station_verification_a", "pivot_at": [240, 118], "zone": "verification", "binds": ["tasks[].checks[].state", "presentation.mood", "recovery.tasks[].attempt.executor_kind"] },
+    { "id": "desk_claude", "sprite": "desk_lamp_a", "pivot_at": [316, 114], "zone": "claude_station", "blocks": [316, 88, 84, 26] },
+    { "id": "table", "sprite": "table_round_a", "pivot_at": [240, 184], "zone": "shared" },
+    { "id": "sofa", "sprite": "sofa_a", "pivot_at": [330, 212], "zone": "lounge" }
+  ],
+  "anchors": {
+    "codex_home": [100, 142], "claude_home": [356, 142], "station_front": [240, 142],
+    "board_watch": [184, 132], "lounge": [372, 224], "rest": [352, 222]
+  },
+  "sort": "by pivot y (floor line), then by x; wall objects always behind floor objects"
+}

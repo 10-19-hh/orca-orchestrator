@@ -1,0 +1,493 @@
+{
+  "schema": "orca-orchestrator/snapshot@1",
+  "mode": "demo",
+  "demo": {
+    "scenario": "connected",
+    "note": "모의 상태 · 실제 CLI·실행·기록 없음"
+  },
+  "taken_at": "2026-11-28T06:00:00Z",
+  "runtime": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "health": "connected",
+    "status": {
+      "app_running": true,
+      "runtime_state": "ready",
+      "runtime_reachable": true,
+      "connection_state": "connected",
+      "app_version": "1.4.264",
+      "version_verified": true,
+      "connected": true
+    },
+    "error": null
+  },
+  "binding": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "terminal_handle_present": true
+  },
+  "run": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "state": "ok",
+    "run_id": "run_0123456789ab",
+    "objective": "Example objective",
+    "error_code": null
+  },
+  "dispatch": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "sends_work": false,
+    "experiment_4a_status": "CONDITIONAL",
+    "providers": [
+      {
+        "provider": "claude",
+        "outcome": "BLOCKED",
+        "reasons": [
+          {
+            "code": "real_dispatch_disabled",
+            "label": "실제 작업 전송이 기본값으로 꺼져 있음"
+          },
+          {
+            "code": "execution_approval_missing",
+            "label": "Worker 실행에 대한 사용자 승인 없음"
+          },
+          {
+            "code": "experiment_4a_not_passed",
+            "label": "Experiment 4-A 통과 전"
+          },
+          {
+            "code": "subscription_auth_unverified",
+            "label": "Worker 구독 인증 미확인"
+          },
+          {
+            "code": "billing_path_unverified",
+            "label": "구독 포함량만 쓰는 과금 경로 미확인"
+          },
+          {
+            "code": "extra_usage_not_confirmed_off",
+            "label": "추가 사용량·크레딧 사용 꺼짐 미확인"
+          },
+          {
+            "code": "auto_recharge_not_confirmed_off",
+            "label": "자동 충전 꺼짐 미확인"
+          },
+          {
+            "code": "worker_dispatch_contract_unverified",
+            "label": "Worker 실행 계약 일부 미검증 (현재 빌드는 전송하지 않음)"
+          }
+        ],
+        "resume_after": null
+      },
+      {
+        "provider": "codex",
+        "outcome": "BLOCKED",
+        "reasons": [
+          {
+            "code": "real_dispatch_disabled",
+            "label": "실제 작업 전송이 기본값으로 꺼져 있음"
+          },
+          {
+            "code": "execution_approval_missing",
+            "label": "Worker 실행에 대한 사용자 승인 없음"
+          },
+          {
+            "code": "experiment_4a_not_passed",
+            "label": "Experiment 4-A 통과 전"
+          },
+          {
+            "code": "subscription_auth_unverified",
+            "label": "Worker 구독 인증 미확인"
+          },
+          {
+            "code": "billing_path_unverified",
+            "label": "구독 포함량만 쓰는 과금 경로 미확인"
+          },
+          {
+            "code": "extra_usage_not_confirmed_off",
+            "label": "추가 사용량·크레딧 사용 꺼짐 미확인"
+          },
+          {
+            "code": "auto_recharge_not_confirmed_off",
+            "label": "자동 충전 꺼짐 미확인"
+          },
+          {
+            "code": "worker_dispatch_contract_unverified",
+            "label": "Worker 실행 계약 일부 미검증 (현재 빌드는 전송하지 않음)"
+          }
+        ],
+        "resume_after": null
+      }
+    ]
+  },
+  "tasks": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "board_state": "ok",
+    "label": "데모 계획 · 승인 후 코드 변경",
+    "error": null,
+    "issues": [],
+    "tasks": [
+      {
+        "task_id": "T-1",
+        "title": "작업 계약 검증",
+        "requirement_ids": [
+          "FR-01"
+        ],
+        "dependencies": [],
+        "paths": [
+          "src/orca_orchestrator/tasks/"
+        ],
+        "protected_paths": [
+          "docs/PRD.md"
+        ],
+        "state": "recheck",
+        "state_label": "재확인",
+        "passed": 0,
+        "total": 1,
+        "failed_checks": [],
+        "waiting_on": [],
+        "checks": [
+          {
+            "check_id": "unit-tests",
+            "description": "저장소 단위 테스트 통과",
+            "state": "stale",
+            "stale_reason": "code_changed",
+            "stale_text": "검증 후 코드 변경",
+            "result": {
+              "outcome": "passed",
+              "exit_code": 0,
+              "check_digest": "529fcc1d224f6f21",
+              "source_digest": "5f0c1e2d3a4b6978",
+              "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+              "git_dirty": true
+            }
+          }
+        ]
+      },
+      {
+        "task_id": "T-2",
+        "title": "요구사항 추적 표시",
+        "requirement_ids": [
+          "FR-07"
+        ],
+        "dependencies": [
+          "T-1"
+        ],
+        "paths": [
+          "src/orca_orchestrator/tui/"
+        ],
+        "protected_paths": [
+          "src/orca_orchestrator/orca/dispatch.py"
+        ],
+        "state": "waiting",
+        "state_label": "대기",
+        "passed": 0,
+        "total": 1,
+        "failed_checks": [],
+        "waiting_on": [
+          {
+            "kind": "prerequisite_recheck",
+            "task_id": "T-1",
+            "passed": 0,
+            "total": 1
+          }
+        ],
+        "checks": [
+          {
+            "check_id": "screen-tests",
+            "description": "상태 화면 테스트 통과",
+            "state": "stale",
+            "stale_reason": "code_changed",
+            "stale_text": "검증 후 코드 변경",
+            "result": {
+              "outcome": "passed",
+              "exit_code": 0,
+              "check_digest": "1e82e6737992784e",
+              "source_digest": "5f0c1e2d3a4b6978",
+              "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+              "git_dirty": true
+            }
+          }
+        ]
+      }
+    ],
+    "requirements": [
+      {
+        "requirement_id": "FR-01",
+        "title": "PRD 입력 및 작업 계약",
+        "task_ids": [
+          "T-1"
+        ],
+        "open_task_ids": [
+          "T-1"
+        ],
+        "satisfied": false
+      },
+      {
+        "requirement_id": "FR-07",
+        "title": "요구사항 추적",
+        "task_ids": [
+          "T-2"
+        ],
+        "open_task_ids": [
+          "T-2"
+        ],
+        "satisfied": false
+      }
+    ],
+    "next": {
+      "task_id": "T-1",
+      "check_ids": [
+        "unit-tests"
+      ],
+      "reason": "선행 작업 없음 · unit-tests 재확인 필요 (검증 후 코드 변경)"
+    },
+    "blockers": [
+      {
+        "task_id": "T-2",
+        "reason": "선행 작업 T-1 재확인 필요",
+        "hint": ""
+      }
+    ]
+  },
+  "flow": {
+    "source": "demo",
+    "judgment": "observed",
+    "availability": "available",
+    "status": null,
+    "error": null
+  },
+  "review": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "state": "reapprove",
+    "approvable": false,
+    "plan_digest": "950dc4886601bf84",
+    "code": {
+      "source_digest": "9e8d7c6b5a493827",
+      "source_files": 24,
+      "source_determined": true,
+      "git_head": "3c1d5e7f9a0b2c4d6e8f0a1b3c5d7e9f1a2b4c6d",
+      "git_dirty": true
+    },
+    "changes": {
+      "base": "main",
+      "base_sha": "8e0f2a4c6e8a0c2e4a6c8e0a2c4e6a8c0e2a4c6e",
+      "digest": "b7e1f0a2c3d49586",
+      "determined": true,
+      "files": [
+        {
+          "path": "README.md",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/contract.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tasks/progress.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/orca_orchestrator/tui/render.py",
+          "status": "modified"
+        }
+      ]
+    },
+    "tasks": [
+      {
+        "task_id": "T-1",
+        "changes": [
+          {
+            "path": "src/orca_orchestrator/tasks/contract.py",
+            "status": "modified"
+          },
+          {
+            "path": "src/orca_orchestrator/tasks/progress.py",
+            "status": "modified"
+          }
+        ],
+        "protected": []
+      },
+      {
+        "task_id": "T-2",
+        "changes": [
+          {
+            "path": "src/orca_orchestrator/tui/render.py",
+            "status": "modified"
+          }
+        ],
+        "protected": []
+      }
+    ],
+    "unlinked": [
+      {
+        "path": "README.md",
+        "status": "modified"
+      }
+    ],
+    "blockers": [
+      {
+        "kind": "task",
+        "subject": "T-1",
+        "text": "T-1: unit-tests 재확인 필요 (검증 후 코드 변경)"
+      },
+      {
+        "kind": "task",
+        "subject": "T-2",
+        "text": "T-2: screen-tests 재확인 필요 (검증 후 코드 변경)"
+      }
+    ],
+    "results_current": 0,
+    "results_recorded": 2,
+    "record": {
+      "decision": "approved",
+      "at": "2026-11-26T11:30:00Z",
+      "note": null,
+      "confirmed_unlinked": [
+        "README.md"
+      ]
+    },
+    "stale_reasons": [
+      "승인 후 코드 변경",
+      "보류 사유 2건"
+    ]
+  },
+  "recovery": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "next_task": "T-1",
+    "error": null,
+    "tasks": [
+      {
+        "task_id": "T-1",
+        "state": "recheck",
+        "reason": "unit-tests 결과가 현재 상태와 다름",
+        "next_action": "flow로 다시 검증",
+        "since": [],
+        "attempt": null
+      },
+      {
+        "task_id": "T-2",
+        "state": "waiting",
+        "reason": "선행 작업 T-1 미완료",
+        "next_action": "T-1 완료 후 진행",
+        "since": [],
+        "attempt": null
+      }
+    ]
+  },
+  "workers": {
+    "live": {
+      "source": "none",
+      "judgment": "observed",
+      "availability": "not_implemented",
+      "items": []
+    },
+    "recorded": {
+      "source": "demo",
+      "judgment": "observed",
+      "availability": "available",
+      "items": []
+    }
+  },
+  "mascots": [
+    {
+      "id": "codex",
+      "name": "Codex 펫",
+      "theme_agent": "codex",
+      "role": "companion",
+      "worker": null,
+      "worker_actions_allowed": false,
+      "worker_actions": [
+        "build",
+        "type"
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude 펫",
+      "theme_agent": "claude",
+      "role": "companion",
+      "worker": null,
+      "worker_actions_allowed": false,
+      "worker_actions": [
+        "build",
+        "type"
+      ]
+    }
+  ],
+  "presentation": {
+    "source": "demo",
+    "judgment": "inferred",
+    "availability": "available",
+    "mood": "ready",
+    "mark": "▸",
+    "tag": "",
+    "label": "▸ 준비 1개 (T-1 먼저) · 실행 시작 아님",
+    "task_id": "T-1",
+    "local_run": {
+      "availability": "unknown",
+      "value": null
+    }
+  },
+  "requests": [
+    {
+      "rid": "recheck:T-1",
+      "kind": "recheck",
+      "label": "재확인 필요",
+      "priority": 2,
+      "task_id": "T-1",
+      "summary": "T-1 결과가 현재 코드·정의와 맞지 않음",
+      "tab": "tab-tasks"
+    },
+    {
+      "rid": "reapprove:-",
+      "kind": "reapprove",
+      "label": "재승인 필요",
+      "priority": 3,
+      "task_id": null,
+      "summary": "승인 후 바뀐 것이 있음 · 다시 검토 필요",
+      "tab": "tab-review"
+    },
+    {
+      "rid": "unlinked:-",
+      "kind": "unlinked",
+      "label": "연결 없는 변경",
+      "priority": 3,
+      "task_id": null,
+      "summary": "연결된 작업이 없는 변경 1개 확인",
+      "tab": "tab-review"
+    }
+  ],
+  "not_included": [
+    {
+      "field": "local_run",
+      "why": "이 화면에서 시작한 로컬 검증은 그 콘솔 프로세스의 메모리에만 있음"
+    },
+    {
+      "field": "action_progress",
+      "why": "검증·흐름 진행 이벤트는 실행한 콘솔에만 전달됨"
+    },
+    {
+      "field": "request_read_state",
+      "why": "읽음 표시는 화면마다 다름 (화면 쪽 상태)"
+    },
+    {
+      "field": "mascot_pose",
+      "why": "펫 좌표·프레임·카메라·선택은 화면 쪽 표현 상태"
+    },
+    {
+      "field": "live_worker_activity",
+      "why": "이 빌드는 Worker 작업을 실시간으로 관측하지 않음"
+    }
+  ]
+}

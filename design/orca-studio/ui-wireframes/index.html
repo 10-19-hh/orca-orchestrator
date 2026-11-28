@@ -1,0 +1,34 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Orca Studio · Wireframes</title><style>
+:root { --bg:#f3efe7; --ink:#2b2622; --muted:#7a7066; --line:#d9d1c4; --card:#fbf8f2; --accent:#b4562f; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI",
+  "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+main { max-width: 1480px; margin: 0 auto; padding: 32px 24px 80px; }
+h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 40px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+h3 { font-size: 15px; margin: 18px 0 6px; }
+p, li { max-width: 78ch; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; display:block; }
+.row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px 16px; }
+.tag { display:inline-block; font-size:12px; padding:1px 7px; border:1px solid var(--line); border-radius:4px;
+  color:var(--muted); margin-right:6px; }
+.warn { border-color:#e0a63a; color:#8a5a00; background:#fff6e0; }
+.concept-only { border:1px dashed #b4562f; color:#b4562f; padding:2px 8px; font-size:12px; font-weight:600; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+table { border-collapse: collapse; font-size: 14px; }
+td, th { border-bottom:1px solid var(--line); padding:5px 10px; text-align:left; vertical-align:top; }
+.sw { display:inline-flex; flex-direction:column; width:66px; margin:0 6px 8px 0; font-size:11px; color:var(--muted); }
+.sw i { display:block; height:30px; border-radius:3px; border:1px solid rgba(0,0,0,.08); margin-bottom:3px; }
+nav a { margin-right: 14px; color: var(--accent); }
+.demo-banner { background:#fff3d6; border:1px solid #e3b65b; color:#6b4a00; padding:6px 12px; border-radius:4px;
+  display:inline-block; font-weight:600; font-size:13px; margin-bottom:12px; }
+</style></head><body><main><nav><a href="../index.html">← 목록</a></nav><style>
+.wf { position:relative; background:#fff; border:1px solid #bbb; font-size:11px; color:#555; }
+.wf div { position:absolute; border:1px solid #9a9a9a; background:#f2f2f2; display:flex; align-items:center; justify-content:center; text-align:center; padding:2px; }
+.wf .scene { background:repeating-linear-gradient(45deg,#e9e3d6,#e9e3d6 6px,#e2dbcc 6px,#e2dbcc 12px); }
+.wf .strong { background:#ddd; font-weight:600; color:#333; }
+.wfc { display:inline-block; margin:0 24px 28px 0; vertical-align:top; }
+.wfc p { margin:6px 0 0; max-width:none; font-size:13px; }
+</style><h1>UI Wireframes</h1><p class="sub">회색 박스 = 앱 UI, 빗금 = 픽셀 장면. 실제 비율의 50%.</p><h2>레이아웃 후보 비교</h2><table><tr><th></th><th>정보 밀도</th><th>장시간 사용</th><th>판단</th></tr><tr><td>A. 장면 + 접히는 우측 Inspector</td><td>중간·조절 가능</td><td>장면이 항상 같은 크기로 보여 안정적</td><td><b>채택</b></td></tr><tr><td>B. 장면 + 하단 Activity/Review</td><td>높음</td><td>세로 공간을 먹어 장면이 작아짐</td><td>Review 확장 상태로만 차용</td></tr><tr><td>C. 장면 + 도구 패널 전환</td><td>낮음</td><td>전환 비용, 상태를 놓치기 쉬움</td><td>미채택</td></tr></table><div class="wfc"><h3>메인 (Layout A: 우측 Inspector)</h3><div class="wf" style="width:720px;height:450px"><div class="strong" style="left:0px;top:0px;width:720px;height:23px">Top Bar · 워크스페이스 · DEMO · Runtime · 바인딩 · Run</div><div class="scene" style="left:10px;top:31px;width:480px;height:270px">Workspace 480×270 (×2 → 960×540)</div><div class="" style="left:10px;top:309px;width:260px;height:116px">Task Board</div><div class="" style="left:278px;top:309px;width:212px;height:116px">Review Queue</div><div class="" style="left:500px;top:23px;width:220px;height:413px">Inspector (접기 가능)</div><div class="strong" style="left:0px;top:436px;width:720px;height:14px">Status Bar</div></div><p>기본. 장면 960×540 고정, Inspector 400px.</p></div><div class="wfc"><h3>Inspector 닫힘</h3><div class="wf" style="width:720px;height:450px"><div class="strong" style="left:0px;top:0px;width:720px;height:23px">Top Bar</div><div class="scene" style="left:10px;top:31px;width:640px;height:360px">Workspace (×3 가능 시 확대)</div><div class="" style="left:660px;top:31px;width:50px;height:360px">요청 3 ▸</div><div class="" style="left:10px;top:399px;width:640px;height:30px">Task strip</div><div class="strong" style="left:0px;top:436px;width:720px;height:14px">Status Bar</div></div><p>선택 해제(Esc) 또는 접기. 장면을 ×3으로 키울 수 있으면 키운다.</p></div><div class="wfc"><h3>Review Queue 확장 (Layout B 요소)</h3><div class="wf" style="width:720px;height:450px"><div class="strong" style="left:0px;top:0px;width:720px;height:23px">Top Bar</div><div class="scene" style="left:10px;top:31px;width:480px;height:270px">Workspace</div><div class="strong" style="left:10px;top:309px;width:480px;height:116px">Review Queue (확장) · 요청별 근거 탭 링크</div><div class="" style="left:500px;top:23px;width:220px;height:413px">Inspector: 선택한 요청 근거 · CLI 명령(텍스트)</div><div class="strong" style="left:0px;top:436px;width:720px;height:14px">Status Bar</div></div><p>하단 패널에 요청 근거. 명령은 텍스트로만.</p></div><div class="wfc"><h3>좁은 화면 (≤ 900px)</h3><div class="wf" style="width:390px;height:457px"><div class="strong" style="left:0px;top:0px;width:390px;height:23px">Top Bar (DEMO 유지)</div><div class="scene" style="left:5px;top:29px;width:380px;height:214px">Workspace ×1 → 전체 폭 맞춤(정수배)</div><div class="strong" style="left:5px;top:249px;width:380px;height:26px">상태 한 줄 · ✓/✗/?/! 기호</div><div class="" style="left:5px;top:281px;width:380px;height:90px">Review Queue</div><div class="" style="left:5px;top:377px;width:380px;height:60px">Task Board (접힘)</div><div class="strong" style="left:0px;top:443px;width:390px;height:14px">Status</div></div><p>장면은 정수 배율만. 정보는 세로로.</p></div><div class="wfc"><h3>Mini Mode 개념</h3><div class="wf" style="width:300px;height:80px"><div class="" style="left:0px;top:0px;width:300px;height:80px"></div><div class="scene" style="left:6px;top:6px;width:120px;height:68px">방 축소 크롭 240×135 ×0.5 (펫·보드·검증 장치만)</div><div class="strong" style="left:132px;top:6px;width:162px;height:18px">DEMO · Runtime ●</div><div class="" style="left:132px;top:28px;width:162px;height:22px">✓ 검증 통과 · 검토 필요</div><div class="" style="left:132px;top:54px;width:162px;height:20px">요청 2 · 클릭 → 앱 열기</div></div><p>항상 위 작은 창. 핵심 상태 한 줄 + 요청 수. 애니메이션 기본 정지.</p></div></main></body></html>

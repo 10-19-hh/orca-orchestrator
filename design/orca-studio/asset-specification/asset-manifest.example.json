@@ -1,0 +1,63 @@
+{
+  "schema": "orca-studio/asset-manifest@0 (draft)",
+  "pixel": { "room": [480, 270], "tile": 16, "sampling": "nearest", "scale": "integer-only" },
+  "palette": "palettes/studio-a.hex",
+  "sheets": [
+    {
+      "id": "mascot_codex",
+      "file": "sprites/mascot_codex.png",
+      "data": "sprites/mascot_codex.json",
+      "frame": [32, 32],
+      "pivot": [16, 31],
+      "body_box": [4, 2, 24, 29],
+      "hit_box": [5, 1, 22, 30],
+      "tags": ["idle", "blink", "breathe", "walk_side", "look", "react_attention", "react_unknown", "react_fail", "happy", "rest"],
+      "reserved_tags": ["work_type", "work_build", "work_review"],
+      "reserved_rule": "drawn only when snapshot mascots[].worker_actions_allowed is true for this mascot; never in snapshot@1"
+    },
+    {
+      "id": "mascot_claude",
+      "file": "sprites/mascot_claude.png",
+      "data": "sprites/mascot_claude.json",
+      "frame": [32, 32],
+      "pivot": [16, 31],
+      "body_box": [2, 11, 28, 20],
+      "hit_box": [3, 10, 26, 21],
+      "tags": ["idle", "blink", "breathe", "walk_side", "look", "react_attention", "react_unknown", "react_fail", "happy", "rest"],
+      "reserved_tags": ["work_type", "work_build", "work_review"]
+    },
+    {
+      "id": "station_verification_a",
+      "file": "sprites/station_verification_a.png",
+      "frame": [48, 52],
+      "pivot": [24, 51],
+      "tags": ["idle", "partial", "pass", "fail", "unknown"],
+      "note": "shows recorded check results only; there is no 'running' frame because snapshot@1 has no running state"
+    },
+    {
+      "id": "board_status_a",
+      "file": "sprites/board_status_a.png",
+      "frame": [92, 40],
+      "pivot": [0, 0],
+      "layer": "wall",
+      "parts": ["frame", "card", "card_glyph_ok", "card_glyph_fail", "card_glyph_ready", "card_glyph_wait", "card_glyph_recheck", "flag_attention", "flag_unknown", "stamp_approved"]
+    },
+    {
+      "id": "device_link",
+      "file": "sprites/device_link.png",
+      "frame": [26, 18],
+      "pivot": [0, 17],
+      "layer": "wall",
+      "tags": ["connected", "disconnected", "unknown"],
+      "note": "runtime.health only"
+    }
+  ],
+  "tilesets": [
+    { "id": "floor_wood_a", "file": "tiles/floor_wood_a.png", "tile": [16, 16], "variants": 4 },
+    { "id": "wall_a", "file": "tiles/wall_a.png", "tile": [16, 84], "variants": 3 }
+  ],
+  "lights": [
+    { "id": "pool_warm_s", "file": "lights/pool_warm_s.png", "blend": "add", "bands": 3, "alpha": 0.25 },
+    { "id": "window_patch", "file": "lights/window_patch.png", "blend": "add", "bands": 1, "alpha": 0.1 }
+  ]
+}

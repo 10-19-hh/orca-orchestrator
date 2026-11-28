@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Orca Studio · Design Review</title><style>
+:root { --bg:#f3efe7; --ink:#2b2622; --muted:#7a7066; --line:#d9d1c4; --card:#fbf8f2; --accent:#b4562f; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI",
+  "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+main { max-width: 1480px; margin: 0 auto; padding: 32px 24px 80px; }
+h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 40px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+h3 { font-size: 15px; margin: 18px 0 6px; }
+p, li { max-width: 78ch; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; display:block; }
+.row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px 16px; }
+.tag { display:inline-block; font-size:12px; padding:1px 7px; border:1px solid var(--line); border-radius:4px;
+  color:var(--muted); margin-right:6px; }
+.warn { border-color:#e0a63a; color:#8a5a00; background:#fff6e0; }
+.concept-only { border:1px dashed #b4562f; color:#b4562f; padding:2px 8px; font-size:12px; font-weight:600; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+table { border-collapse: collapse; font-size: 14px; }
+td, th { border-bottom:1px solid var(--line); padding:5px 10px; text-align:left; vertical-align:top; }
+.sw { display:inline-flex; flex-direction:column; width:66px; margin:0 6px 8px 0; font-size:11px; color:var(--muted); }
+.sw i { display:block; height:30px; border-radius:3px; border:1px solid rgba(0,0,0,.08); margin-bottom:3px; }
+nav a { margin-right: 14px; color: var(--accent); }
+.demo-banner { background:#fff3d6; border:1px solid #e3b65b; color:#6b4a00; padding:6px 12px; border-radius:4px;
+  display:inline-block; font-weight:600; font-size:13px; margin-bottom:12px; }
+</style></head><body><main><h1>Orca Studio — Phase 2 Art Direction</h1><p class="sub">디자인 검토용 산출물. 구현이 아니다. 모든 장면은 <code>tests/fixtures/snapshot_v1</code>의 모의 데이터로 그렸다.</p><div class="demo-banner">DEMO · 모의 데이터</div><div class="row"><div class="card" style="width:330px"><h3><a href="hero/hero-mockup.html">Hero Mockup (추천안 A, 1440×900)</a></h3><img class="px" src="hero/hero-scene.png" style="width:300px;height:169px"></div><div class="card" style="width:330px"><h3><a href="concepts/index.html">Art Direction 후보 3종 + 자체 점검</a></h3><img class="px" src="concepts/concept-B.png" style="width:300px;height:169px"></div><div class="card" style="width:330px"><h3><a href="character-studies/index.html">Character Design Sheet</a></h3></div><div class="card" style="width:330px"><h3><a href="environment-studies/index.html">Environment Design Sheet</a></h3><img class="px" src="environment-studies/zones.png" style="width:300px;height:169px"></div><div class="card" style="width:330px"><h3><a href="state-studies/index.html">State Design Sheet (12 fixtures)</a></h3><img class="px" src="state-studies/state-connected-failed.png" style="width:300px;height:169px"></div><div class="card" style="width:330px"><h3><a href="ui-wireframes/index.html">UI Wireframes</a></h3></div><div class="card" style="width:330px"><h3><a href="art-direction/SPEC.md">Design Specification (문서)</a></h3></div></div><p class="sub">다시 만들기: <code>python3 design/orca-studio/tools/build.py</code> (표준 라이브러리만)</p></main></body></html>
