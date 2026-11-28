@@ -15,7 +15,14 @@ from unittest import mock
 from orca_orchestrator import review as cli
 from orca_orchestrator.orca.runner import CommandResult
 from orca_orchestrator.tasks import PLAN_SCHEMA, FileTaskSource, PlanFormatError, TaskState, parse_plan
-from orca_orchestrator.tasks.codebase import GitError, GitReader, compare_changes, git_environment, source_state
+from orca_orchestrator.tasks.codebase import (
+    GitError,
+    GitReader,
+    compare_changes,
+    git_environment,
+    scope_text,
+    source_state,
+)
 from orca_orchestrator.tasks.flow import StopKind, inspect, run_flow
 from orca_orchestrator.tasks.paths import approval_path, flow_status_path, lock_path, tool_files
 from orca_orchestrator.tasks.progress import CheckState, StaleReason
@@ -264,6 +271,26 @@ class ApprovalTest(unittest.TestCase):
         review = repo.review()
         self.assertEqual(review.stale_reasons, ("승인 후 변경 파일 달라짐",))
 
+    def test_root_module_change_after_verification_needs_recheck(self):
+        repo = Repo(self)
+        repo.verify_all()
+        repo.write("helper.py", "V = 1\n")
+        board = repo.board()
+        self.assertEqual(board.progress.task("T-1").state, TaskState.RECHECK)
+        self.assertEqual(board.progress.task("T-1").checks[0].stale_reason, StaleReason.CODE_CHANGED)
+
+    def test_dependency_change_after_approval_needs_reapproval(self):
+        # pyproject.toml is not verified code (tests run from src/ and tests/, not an installed package),
+        # but it is part of the change set, so an approval no longer applies once it changes.
+        repo = Repo(self)
+        repo.write("pyproject.toml", "[project]\ndependencies = []\n")
+        repo.verify_all()
+        repo.decide(confirm_unlinked=True)
+        repo.write("pyproject.toml", "[project]\ndependencies = ['requests']\n")
+        review = repo.review()
+        self.assertEqual(review.progress.task("T-1").state, TaskState.VERIFIED)
+        self.assertEqual((review.state, review.stale_reasons), (ApprovalState.REAPPROVE, ("승인 후 변경 파일 달라짐",)))
+
     def test_unlinked_change_needs_confirmation(self):
         repo = Repo(self)
         repo.write("notes.txt", "x\n")
@@ -403,6 +430,44 @@ class SourceDigestTest(unittest.TestCase):
                     path.write_bytes(old)
                 self.assertEqual(self.digest(), before)
 
+    def test_root_modules_and_packages_are_verified_code(self):
+        # python -m unittest runs at the repository root, so tests can import these.
+        before = self.digest()
+        helper = self.root / "helper.py"
+        helper.write_text("V = 1\n", encoding="utf-8")
+        added = self.digest()
+        self.assertNotEqual(added, before)
+        helper.write_text("V = 2\n", encoding="utf-8")
+        self.assertNotEqual(self.digest(), added)
+        helper.unlink()
+        self.assertEqual(self.digest(), before)
+        package = self.root / "flatpkg"
+        package.mkdir()
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (package / "ops.py").write_text("x = 1\n", encoding="utf-8")
+        with_package = self.digest()
+        self.assertNotEqual(with_package, before)
+        (package / "ops.py").write_text("x = 2\n", encoding="utf-8")
+        self.assertNotEqual(self.digest(), with_package)
+
+    def test_other_root_files_are_not_verified_code(self):
+        before = self.digest()
+        for rel in ("pyproject.toml", "setup.cfg", "requirements.txt", "README.md", ".env", ".hidden.py",
+                    "nsdir/mod.py", "docs/conf.py", "__pycache__/helper.cpython-311.pyc", "results.json.lock"):
+            path = self.root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("x = 1\n", encoding="utf-8")
+        self.assertEqual(self.digest(), before)
+
+    def test_digest_without_root_modules_is_unchanged_from_before(self):
+        # Results recorded before root modules were part of the scope stay valid.
+        import hashlib
+
+        entries = sorted((p.relative_to(self.root).as_posix(), hashlib.sha256(p.read_bytes()).hexdigest())
+                         for top in ("src", "tests") for p in (self.root / top).rglob("*") if p.is_file())
+        text = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
+        self.assertEqual(self.digest(), hashlib.sha256(text.encode("utf-8")).hexdigest()[:16])
+
     def test_code_changed_while_tests_ran_is_not_recorded(self):
         (self.root / "plan.json").write_text(json.dumps(review_plan()), encoding="utf-8")
         results = self.root / "results.json"
@@ -410,7 +475,7 @@ class SourceDigestTest(unittest.TestCase):
         with self.assertRaises(VerificationNotCompleted) as ctx:
             verify(self.root / "plan.json", results, "T-1", "unit-tests", repo=self.root, environ={},
                    runner_factory=runner.factory, python=PYTHON, now=lambda: NOW)
-        self.assertIn("검증 대상 파일(src/, tests/)이 바뀌어", ctx.exception.message)
+        self.assertIn(f"검증 대상 파일({scope_text()})이 바뀌어", ctx.exception.message)
         self.assertFalse(results.exists())
 
 

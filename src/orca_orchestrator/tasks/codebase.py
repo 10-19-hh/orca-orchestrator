@@ -4,7 +4,15 @@ Two facts are kept apart.
 
 * The **source digest** fingerprints the files a local check reads: every file
   under ``src/`` and ``tests/`` of the repository (:data:`VERIFICATION_SCOPE`),
-  read from disk, so edits that are not committed count. Git is not consulted:
+  plus the Python modules (``*.py``) and regular packages (folders with an
+  ``__init__.py``) directly under the repository root, read from disk, so
+  edits that are not committed count. The root is included because the unit
+  test command runs there with ``python -m``, which puts the repository root
+  first on ``sys.path``: tests can import those modules, so a change there can
+  change the outcome. Folders without ``__init__.py`` (namespace packages,
+  ``docs/``, ``examples/``) and other root files (``README.md``,
+  ``pyproject.toml``) are not part of it; a repository without root modules
+  keeps the digest it had before. Git is not consulted:
   two working trees at the same HEAD with different edits get different
   digests. Caches (``__pycache__``, ``*.pyc``), hidden files and folders, and
   the tool's own files (plan, results and their ``.lock``/``.flow.json``/
@@ -67,8 +75,32 @@ class SourceState:
     error: str | None = None
 
 
+ROOT_MODULES_TEXT = "저장소 루트의 Python 모듈·패키지"
+
+
 def scope_text() -> str:
-    return ", ".join(f"{d}/" for d in VERIFICATION_SCOPE)
+    return ", ".join([*(f"{d}/" for d in VERIFICATION_SCOPE), ROOT_MODULES_TEXT])
+
+
+def _skipped_name(name: str) -> bool:
+    return name.startswith(".") or name.endswith(CACHE_SUFFIXES) or is_tool_file_name(name)
+
+
+def _root_targets(repo: Path) -> tuple[list[str], list[Path]]:
+    """Importable code directly under the repository root: ``*.py`` files and regular package folders."""
+
+    files, packages = [], []
+    with os.scandir(repo) as it:
+        listing = sorted(it, key=lambda e: e.name)
+    for entry in listing:
+        name = entry.name
+        if name.startswith(".") or name in VERIFICATION_SCOPE or name in CACHE_DIRS:
+            continue
+        if entry.is_file() and name.endswith(".py") and not _skipped_name(name):
+            files.append(name)
+        elif entry.is_dir() and (Path(entry.path) / "__init__.py").is_file():
+            packages.append(Path(entry.path))
+    return files, packages
 
 
 def source_state(repo: str | Path, exclude: Iterable[Path] = ()) -> SourceState:
@@ -77,21 +109,31 @@ def source_state(repo: str | Path, exclude: Iterable[Path] = ()) -> SourceState:
     repo = Path(repo)
     skipped = _relative(exclude, repo)
     entries: list[tuple[str, str]] = []
+
+    def walk(root: Path) -> None:
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and d not in CACHE_DIRS)
+            rel_dir = Path(dirpath).relative_to(repo).as_posix()
+            for name in sorted(filenames):
+                if _skipped_name(name):
+                    continue
+                rel = f"{rel_dir}/{name}"
+                if rel in skipped:
+                    continue
+                entries.append((rel, _file_hash(Path(dirpath) / name)))
+
     try:
         for top in VERIFICATION_SCOPE:
             root = repo / top
-            if not root.is_dir():
-                continue
-            for dirpath, dirnames, filenames in os.walk(root):
-                dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and d not in CACHE_DIRS)
-                rel_dir = Path(dirpath).relative_to(repo).as_posix()
-                for name in sorted(filenames):
-                    if name.startswith(".") or name.endswith(CACHE_SUFFIXES) or is_tool_file_name(name):
-                        continue
-                    rel = f"{rel_dir}/{name}"
-                    if rel in skipped:
-                        continue
-                    entries.append((rel, _file_hash(Path(dirpath) / name)))
+            if root.is_dir():
+                walk(root)
+        if repo.is_dir():
+            modules, packages = _root_targets(repo)
+            for name in modules:
+                if name not in skipped:
+                    entries.append((name, _file_hash(repo / name)))
+            for package in packages:
+                walk(package)
     except OSError as exc:
         return SourceState(None, 0, f"검증 대상 파일을 읽을 수 없음 ({type(exc).__name__})")
     entries.sort()  # an empty scope is a state too; the test run itself reports missing tests

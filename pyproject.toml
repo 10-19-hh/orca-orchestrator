@@ -9,6 +9,10 @@ description = "PRD-driven agent orchestrator control plane using Orca as the exe
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+# Interactive console (python -m orca_orchestrator in a terminal). Without it the read-only screen opens.
+tui = ["textual>=8.2.8,<9"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
