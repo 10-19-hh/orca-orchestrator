@@ -9,6 +9,11 @@ collection as one ``orca-orchestrator/snapshot@1`` JSON document instead
 (``snapshot_document``); ``--plain`` opens the earlier
 read-only interactive screen. Without Textual installed, the earlier screen
 opens with a note on how to install it.
+
+``--topology-preview`` opens a separate office preview fed by read-only
+``topology@1`` polls (``console.office_screen``); with ``--demo`` it plays a
+synthetic timeline. It never touches the yard, the console or Snapshot v1, and
+the topology modules are imported only on that path.
 """
 
 from __future__ import annotations
@@ -79,7 +84,82 @@ def build_parser() -> argparse.ArgumentParser:
                         "마당에서 m으로도 바꿉니다.")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS, metavar="SECONDS",
                         help=f"TUI에서 실행하는 검증 하나의 제한 시간 (기본 {DEFAULT_TIMEOUT_SECONDS:g}초)")
+    parser.add_argument("--topology-preview", action="store_true",
+                        help="Orca가 보고하는 세션으로 움직이는 픽셀 사무실 미리보기 (읽기 전용 조회만, 기존 마당과 별개). "
+                        "--demo와 함께 쓰면 합성 진행 장면을 보여 줍니다.")
+    parser.add_argument("--topology-scene", metavar="SCENE",
+                        help="--topology-preview --demo와 함께: timeline(기본) 또는 topology DEMO 장면 이름")
+    parser.add_argument("--interval", type=float, metavar="SECONDS",
+                        help=f"--topology-preview의 조회 간격 (LIVE 기본 {PREVIEW_LIVE_INTERVAL:g}초·최소 "
+                        f"{PREVIEW_LIVE_MIN:g}초, DEMO 기본 {PREVIEW_DEMO_INTERVAL:g}초)")
     return parser
+
+
+PREVIEW_LIVE_INTERVAL, PREVIEW_LIVE_MIN, PREVIEW_DEMO_INTERVAL, PREVIEW_DEMO_MIN = 5.0, 2.0, 3.0, 0.5
+PREVIEW_CONFLICTS = (("tasks", "--tasks"), ("results", "--results"), ("repo", "--repo"),
+                     ("demo_results", "--demo-results"), ("json", "--json"), ("plain", "--plain"),
+                     ("console", "--console"))
+
+
+def topology_preview(args, parser: argparse.ArgumentParser) -> int:
+    """``--topology-preview``: the office preview fed by ``topology@1`` (read-only). Imported only here."""
+
+    for attr, flag in PREVIEW_CONFLICTS:
+        if getattr(args, attr):
+            parser.error(f"--topology-preview는 {flag}와 함께 쓸 수 없습니다.")
+    from .console.motion import Motion
+    from .topology.feed import LiveSource, TimelineSource, TopologyFeed
+    from .topology.scenarios import PREVIEW_STEP_NOTES, SCENES, preview_timeline
+
+    if args.demo:
+        name = args.topology_scene or "timeline"
+        if name == "timeline":
+            source = TimelineSource(preview_timeline(), PREVIEW_STEP_NOTES)
+        elif name in SCENES:
+            source = TimelineSource(SCENES[name])
+        else:
+            parser.error(f"--topology-scene: timeline 또는 {', '.join(SCENES)} 중 하나")
+        interval, low = args.interval or PREVIEW_DEMO_INTERVAL, PREVIEW_DEMO_MIN
+    else:
+        if args.topology_scene:
+            parser.error("--topology-scene은 --demo와 함께 써야 합니다.")
+        source = LiveSource()
+        interval, low = args.interval or PREVIEW_LIVE_INTERVAL, PREVIEW_LIVE_MIN
+    if interval < low:
+        parser.error(f"--interval은 {low:g}초 이상이어야 합니다.")
+    feed = TopologyFeed(source)
+    if args.once or not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return preview_text(feed, source)
+    try:
+        from .console.office_screen import run_topology_preview
+    except ImportError as exc:
+        if not _missing_tui(exc):
+            raise
+        print(TUI_MISSING.replace("기존 읽기 전용 화면을 엽니다", "텍스트 요약을 출력합니다"), file=sys.stderr, flush=True)
+        return preview_text(feed, source)
+    return run_topology_preview(feed, interval=interval, motion=Motion(args.motion))
+
+
+def preview_text(feed, source) -> int:
+    """Non-interactive: one text summary per observation (every step of a DEMO scene, one live poll)."""
+
+    from .topology.__main__ import text_lines
+
+    try:
+        sys.stdout.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
+    polls = getattr(source, "total", 1)
+    blocks = []
+    for _ in range(polls):
+        result = feed.poll_now()
+        if result is None or result.document is None:
+            print(f"조회 실패: {result.error if result else '진행 중'}", file=sys.stderr)
+            return 1
+        blocks.append("\n".join(text_lines(result.document)))
+    feed.close()
+    print("\n\n".join(blocks))
+    return 0
 
 
 def _missing_tui(exc: ImportError) -> bool:
@@ -125,6 +205,10 @@ def open_console(args, collect) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.topology_preview:
+        return topology_preview(args, parser)
+    if args.topology_scene or args.interval is not None:
+        parser.error("--topology-scene·--interval은 --topology-preview와 함께 써야 합니다.")
     if args.demo_results and not args.demo:
         parser.error("--demo-results는 --demo와 함께 써야 합니다.")
     if args.demo and (args.tasks or args.results):
