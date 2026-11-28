@@ -434,3 +434,7 @@ https://github.com/surlymochan/swrm
 ### 다음 의사결정
 
 제품 연동과 로컬 검증을 이어간다. 다음 실제 Worker 호출 직전에 4-A의 남은 근거(Claude 구독 인증과 과금 배제 포함)를 확보하고 사용자에게 해당 실행을 승인받는다. 실호출 검증 이후 Gate 결과로 Orca 채택과 후속 개발 범위를 확정한다.
+
+### Orca Studio 체크포인트 (2026-11-29)
+
+Workspace Topology(`topology@1`, 읽기 전용)와 Topology Preview(`--topology-preview`)는 `phase-2.7-living-workspace` 브랜치에 있다. 독립 검수 Gate는 BLOCKED이며 Phase 2.7-R 복구가 남았다. 상세는 [ORCA_STUDIO_PHASE_2_7_HANDOFF.md §9](ORCA_STUDIO_PHASE_2_7_HANDOFF.md#9-end-of-day-checkpoint-2026-11-29).

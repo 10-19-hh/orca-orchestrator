@@ -115,3 +115,101 @@ React·TypeScript가 탐색과 선택 시 열리는 Inspector를, PixiJS가 Room
 3. [Snapshot v1](snapshot-v1.md), [PRD](PRD.md), [README](../README.md)로 필드와 실행·과금·승인 경계를 대조한다.
 4. [Phase 2 아트 명세](../design/orca-studio/art-direction/SPEC.md), [디자인 인덱스](../design/orca-studio/index.html), [기존 참조 기록](../design/orca-studio/references/README.md)을 비교 자료로 사용한다.
 5. Phase 2.7 구현 결과가 전달되면 실제 변경 파일·테스트·사용자 승인 여부를 각각 기록한다. 프롬프트 전달 기록은 구현이나 시각 승인 증거로 쓰지 않는다.
+
+## 9. End-of-Day Checkpoint (2026-11-29)
+
+이 절이 오늘 작업의 최신 인계다. §1의 기준선 표는 병합 커밋 전에 쓴 것이며, 아래 내용이 그것을 대신한다.
+
+### 기준선과 브랜치
+
+- **통합 기준선:** `main` = `origin/main` = `242a7a6`
+  - origin/main 병합 커밋이며, Windows Python 3.11 기준 424개 테스트가 통과했다.
+- **개발 브랜치:** `phase-2.7-living-workspace`
+  - 오늘 체크포인트 커밋까지 원격에 일반 push했다.
+  - `main`에는 병합하지 않았다.
+- **Orca 준비 worktree:** `C:/Users/lee/orca/workspaces/.orca-preparing/…`
+  - `242a7a6`의 detached HEAD이며 잠겨 있고 변경이 없다.
+  - 별도 아트 브랜치는 아니다. 건드리지 않았다.
+
+### 완료된 작업
+
+| 단계 | 내용 | 주요 경로 |
+| --- | --- | --- |
+| 2.7 Workspace Topology | 읽기 전용 조회(명령 5개 + Git 1개), `topology@1` 계약, 동일성·생애 주기, `TopologyTracker`, Live·Recorded·Demo, 합성 장면 18개 | `src/orca_orchestrator/topology/`, `tests/test_topology.py`, `tests/fixtures/topology_v1/`, [계약](workspace-topology-v1.md), [조사](workspace-topology-audit.md), [행동](ambient-agent-behavior.md) |
+| 2.7 디자인 | 배치·캐릭터·행동 명세, 에셋 매니페스트, 레이아웃 시안 11종 (최종 아트 아님) | `design/orca-studio/living-workspace/` |
+| 2.7.1 Topology Preview | 기존 픽셀 마당 부품으로 만든 실시간 사무실 화면 (아래 상세) | `topology/feed.py`, `console/office.py`, `console/office_screen.py`, `tests/test_topology_preview.py` |
+| 2.8-A Art Track | 자체 생성 콘셉트 후보 5장 (미승인) | `design/orca-studio/art-track/phase-2.8-a/` |
+
+**2.7.1 Topology Preview 상세**
+- Worktree별 사무실, 세션마다 책상과 펫
+- 고정 좌석 예약, 주기적 읽기 전용 조회
+- 조회는 한 번에 하나만, 화면 밖 스레드에서 돌고 종료 시 정리
+- 11단계 DEMO timeline
+
+### 실행 명령
+
+```powershell
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview          # Live (읽기 전용)
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview --demo   # 합성 DEMO (n: 다음 단계)
+.\.venv\Scripts\python.exe -m orca_orchestrator.topology --live --text      # topology@1 요약
+.\.venv\Scripts\python.exe -m unittest discover -s tests                    # 전체 회귀
+```
+
+### 검증 결과 (시점별로 구분)
+
+| 시점 | 결과 | 출처 |
+| --- | --- | --- |
+| Integration Baseline (`242a7a6` 커밋 전) | 424개 통과, 297초 | 이 세션의 실행 로그 |
+| Phase 2.7 최종 재실행 | 468개 통과, 스킵 0, 307.9초 | 이 세션의 실행 로그 |
+| Phase 2.7 Independent Review | 468개 전체 통과 · **Gate BLOCKED** | 사용자 보고. 검수 원문은 이 저장소에 없음 |
+| Phase 2.7.1 (venv 3.11.9 + Textual) | 504개 통과, 스킵 1 (Textual 없는 환경 전용 테스트), 329초 | 이 세션의 실행 로그 |
+| Phase 2.7.1 (시스템 3.11.9, Textual 없음) | 504개 통과, 스킵 56 | 이 세션의 실행 로그 |
+| 신규 Preview 테스트 | 35개 | `tests/test_topology_preview.py` |
+| 합성 검증 시나리오 | 14개 (DEMO + 테스트) | 2.7.1 보고 |
+| 실제 Live 조회 (8분, 5초 간격) | 요청 97, 시작 96, 중복 방지 1, 반영 95, 실패 0, 종료 시 진행 중 조회 폐기 | 2.7.1 보고 |
+| 사용자 확인 | Live Preview에서 기존 Codex 세션과 책상 표시, DEMO 마지막 단계 화면 표시 | 사용자 보고 |
+| 실제 세션 추가·작업 상태 전환의 연속 Live 검증 | **미완료** | |
+| 실제 세션 종료 판정 (`exitCause`) | **미검증** | |
+
+### 미해결 결함 — Phase 2.7-R (BLOCKED 유지)
+
+- 독립 검수가 찾은 아래 결함은 **완료 증거가 확인될 때까지 미해결**이다.
+- 테스트 통과만으로 BLOCKED 판정을 풀지 않는다.
+- 각 결함에 대해 Preview에서 따로 처리한 것과 Topology Core에 남은 것을 나눴다.
+
+| 결함 | Topology Core | Preview에서 따로 처리한 것 |
+| --- | --- | --- |
+| PTY 종료를 Agent Session 종료로 오판 (`exitCause`) | 미해결 | 없음 (Core 판정을 그대로 표시) |
+| Worktree 제거를 세션 종료로 오판 | 미해결 | 없음 |
+| 다른 호스트의 같은 세션 ID 병합 | 미해결 | 없음 |
+| 부분 조회 실패 시 임시 세션 복제 | 미해결 | 없음 |
+| 신선도·연결 상태 판단 | 미해결 | 조회 실패 시 마지막 문서 유지와 실패 표시는 Preview에서 따로 처리 |
+| 공개 JSON·raw recording 보안 경계 (`--save-raw`) | 미해결 | — |
+| 읽기 전용 어댑터 허용 목록 경계 (`OrcaCliAdapter.read`) | 미해결 | — |
+| Live/Demo WorkerLink 격리 | 미해결 | — |
+| 좌석 예약 유지 | Core 범위 밖 | 처리함: `SeatBook`이 missing·unknown에도 자리를 유지하고, 종료일 때만 비움 |
+| 공용 공간 점유 소진 | 설계 도구(`layout.allocate`)에 남음 | Preview는 예약 없이 산책해 소진 문제가 없음. 대신 예약 자체가 미구현 |
+| 미상 Provider 표현 | 계약은 `unknown`·`other` | 처리함: 회색 팔레트 교체 펫 |
+| 의자에 의한 캐릭터 가림 | 레이아웃 시안 문제 | 처리함: Preview는 펫을 책상 앞에 그려 가림 없음. 시안 이미지는 그대로 |
+
+### 디자인 결정 (미승인)
+
+- 기본 방향은 **Concept C — Walnut Developer Studio**다.
+- C v2의 개선된 공간 배치를 참고하되, C의 색과 전문적인 사무실 분위기를 유지한다.
+- C v3 요구사항: [art-track README](../design/orca-studio/art-track/phase-2.8-a/README.md)
+- Antigravity 이미지 생성은 실제로 성공했고, 이후 `RESOURCE_EXHAUSTED`(429)가 발생했다.
+  - 텍스트 모델 할당량과 이미지 생성 가능 여부는 따로 확인한다.
+  - 다음 제작은 ChatGPT 등 사용 가능한 환경에서 한다.
+
+### 내일 작업 순서
+
+1. Phase 2.7-R 안전성 복구 (위 결함 표의 Topology Core 항목)
+2. Codex 독립 재검수
+3. Live Preview에서 실제 세션 추가와 작업 전환을 연속으로 검증 (사용자가 세션 생성)
+4. Concept C v3 제작과 사용자 승인
+5. 모듈형 환경·가구 에셋 제작
+6. Claude·Codex 캐릭터 스프라이트 제작
+7. React + TypeScript + PixiJS GUI 구현
+8. Navigation·Ambient Behavior Engine
+
+기존 픽셀 마당과 Preview는 기능 검증용으로 유지한다. TUI 그래픽 개선은 우선순위에서 제외한다.

@@ -930,6 +930,49 @@ Worker 작업 전송에는 실제 실행 경로의 구독 인증, 구독 외 과
 
 [디자인 인덱스](design/orca-studio/index.html)를 브라우저에서 로컬 파일로 열면 Hero, A/B/C 콘셉트, 캐릭터·환경·상태 시안을 볼 수 있습니다. 시안은 Snapshot 픽스처를 사용하며 최종 승인된 아트나 실행 가능한 Studio 앱은 아직 없습니다. 현재 방향과 후속 단계의 승인 기준은 [Orca Studio 인계 문서](docs/ORCA_STUDIO_HANDOFF.md)에 있습니다.
 
+오늘의 체크포인트와 다음 작업 순서는 [Phase 2.7 인계 §9](docs/ORCA_STUDIO_PHASE_2_7_HANDOFF.md#9-end-of-day-checkpoint-2026-11-29)에 있습니다. 독립 검수 Gate는 BLOCKED이며 Phase 2.7-R 복구가 남았습니다.
+
+Phase 2.7의 새 방향은 [Living Workspace 디자인 패키지](design/orca-studio/living-workspace/README.md)에 있습니다. Cozy Isometric Developer Office 아트 디렉션, 방 배치·확장 규칙, 캐릭터·행동·에셋 규격, 코드로 그린 레이아웃 시안을 담았습니다. 시안은 최종 아트가 아닙니다.
+
+### Workspace Topology (읽기 전용)
+
+`python -m orca_orchestrator.topology`는 Orca가 보고하는 저장소·Worktree·탭·패널·에이전트 세션을 `orca-orchestrator/topology@1` JSON으로 내보냅니다. Studio의 방·자리·펫이 이 데이터에서 생깁니다. 계약은 [workspace-topology-v1.md](docs/workspace-topology-v1.md), 실제 Orca `1.4.264`에서 확인한 범위는 [조사 보고](docs/workspace-topology-audit.md)에 있습니다.
+
+```powershell
+python -m orca_orchestrator.topology --list                      # 합성 DEMO 장면 18개
+python -m orca_orchestrator.topology --demo reconnect-unconfirmed --text
+python -m orca_orchestrator.topology --demo four-sessions --step 1 # topology@1 JSON
+python -m orca_orchestrator.topology --live --text                 # 실제 Orca를 한 번 읽기 전용 조회
+```
+
+- 조회 명령은 `status`, `repo list`, `worktree list`, `terminal list --include-visual-layouts`, `agent list`(모두 `--json`)와 `git worktree list --porcelain`뿐입니다. 터미널 입력, 세션·Worker 시작이나 종료, 설정 변경은 하지 않습니다.
+- 경로·터미널 핸들·제목·출력 미리보기·대화 내용은 문서에 넣지 않습니다.
+- 목록에서 빠지거나 연결이 끊긴 세션은 `missing`·`unknown`으로 남고 자리를 유지합니다. 종료(`ended`)는 명시적 근거가 있을 때만 판정합니다.
+- 상태 화면과 콘솔은 이 모듈을 쓰지 않으며 `snapshot@1`은 그대로입니다.
+
+### Topology Preview (픽셀 사무실 미리보기)
+
+기존 픽셀 마당의 그림과 움직임을 그대로 써서, Orca가 보고하는 세션을 사무실로 보여 주는 별도 화면입니다. 기존 마당(`python -m orca_orchestrator`)은 바뀌지 않습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview                 # 실제 Orca, 5초마다 읽기 전용 조회
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview --interval 3    # 조회 간격 (최소 2초)
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview --demo          # 합성 진행 장면 11단계 (n: 다음 단계)
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview --demo --topology-scene eight-sessions
+.\.venv\Scripts\python.exe -m orca_orchestrator --topology-preview --demo --once   # 대화형 화면 없이 단계별 요약 출력
+```
+
+- 확인된 에이전트 세션마다 펫 하나와 책상 하나가 생깁니다. 같은 Provider의 세션도 각각 따로입니다. 자리는 처음 관측된 순서대로 정해지고, 세션이 끝나기 전에는 바뀌지 않습니다. 일반 터미널은 펫이 되지 않습니다.
+- `presentation.intent`에 따라 움직입니다.
+  - `work`: 자기 책상으로 가서 앉습니다. 모니터가 켜지고 일반 작업 자세만 씁니다.
+  - `attention`: 자기 책상에서 `!`를 띄웁니다.
+  - `ambient`: 공용 공간에서 쉬거나 산책합니다.
+  - `unobservable`: 그 자리에서 흐려지고 `?`를 띄웁니다.
+  - `exit`: 출입구로 나갑니다.
+  - Typing·Thinking·Building은 표현하지 않습니다.
+- 조회는 화면 밖 스레드에서 한 번에 하나만 돌고, 앞 조회가 끝나지 않았으면 그 회차를 건너뜁니다. 한 tracker가 조회 사이의 상태를 기억합니다. 조회에 실패하면 마지막 관측을 그대로 두고 실패를 표시합니다. 종료하면 진행 중인 조회 결과는 버립니다.
+- 키: `[` `]` 방(Worktree) 전환, ←→·클릭 펫 선택, `r` 지금 조회(DEMO에서는 `n` 다음 단계), `m` 움직임, `q` 종료
+
 ## 라이선스
 
 [MIT License](LICENSE)로 배포합니다.

@@ -223,3 +223,36 @@ FEASIBLE / PARTIALLY FEASIBLE / BLOCKED로 판정하고 다음 단계 승인 전
 ## 12. 이번 문서 전달의 검증 범위
 
 이 파일만 별도 커밋한다. 기존 staged/unstaged/untracked 변경은 보존하며 `reset`, `stash`, 강제 push를 사용하지 않는다. 커밋 전 문서 diff와 `git diff --check`, 민감정보·절대 경로 포함 여부를 검토한다. 커밋 후 변경 파일 목록이 이 문서 하나인지, 기존 변경이 유지되는지 확인한다. 현재 브랜치로 일반 push하고 원격 HEAD를 확인한다. 인증·권한·충돌 문제가 있으면 강제 처리하지 않고 blocker로 보고한다. 실제 커밋 해시와 push 결과는 작업 완료 보고에서 제공한다.
+
+## 13. Phase 2.7 결과 (2026-11-29)
+
+이 절은 Phase 2.7 작업이 이 계획에 덧붙인 결과다. 앞 절(1–12)은 작성 당시 기록으로 그대로 둔다.
+
+- **통합 기준선**: `origin/main`을 병합한 커밋 `242a7a6`을 `main`에 일반 push했다. Windows Python 3.11 기준 424개 테스트를 통과했다. Phase 2.7 변경은 `phase-2.7-living-workspace` 브랜치에 커밋하지 않은 상태로 사용자 검토를 기다린다.
+- **Workspace Topology**: §7의 조사 계획을 실행했다. 결과는 [조사 보고](workspace-topology-audit.md)에 있고 판정은 `PARTIALLY FEASIBLE`이다. 읽기 전용 계약 [`topology@1`](workspace-topology-v1.md) 후보는 `src/orca_orchestrator/topology/`에 구현했다.
+  - 조회: 명령 5개와 Git 1개
+  - 동일성·생애 주기 규칙, 장면 의도 판정
+  - 합성 DEMO 18개 장면, 테스트
+  - 이 계약은 Snapshot v1과 기존 TUI를 바꾸지 않는다.
+- **행동 규칙**: [Ambient Agent Behavior](ambient-agent-behavior.md). 관측 → 의도 → 펫 행동의 우선순위, 연결 끊김과 종료의 구분, 결정적 시드와 예약을 정했다.
+- **아트 디렉션**: [Living Workspace 디자인 패키지](../design/orca-studio/living-workspace/README.md)
+  - Cozy Isometric Developer Office 방향
+  - 방 배치·확장, 캐릭터·행동·에셋 규격
+  - 코드로 그린 레이아웃 시안 11종: 세션 0·2·4·8, 대기·작업, Studio 개요, 행동 순서, 포즈, Inspector 닫힘·열림
+  - 최종 콘셉트 아트와 제작 에셋은 없다. §3의 mauve 벽 방향은 저채도 따뜻한 베이지·그레이지로 조정했다.
+- **보충 인계**: [ORCA_STUDIO_PHASE_2_7_HANDOFF.md](ORCA_STUDIO_PHASE_2_7_HANDOFF.md)는 다른 세션이 같은 날 작성해 이 브랜치에 커밋한 문서다(`4694afb`). 그 문서의 기준선 표(§1)는 병합 커밋 전 상태를 적고 있다.
+- **다음 승인**:
+  - Phase 2.8: Master Concept Art와 캐릭터 권리 확인
+  - Phase 3: Node 툴체인, React·TypeScript·PixiJS 구현 범위
+  - 각각 사용자가 따로 승인한다.
+
+### Phase 2.7.1 — Topology Preview (2026-11-29)
+
+- `python -m orca_orchestrator --topology-preview [--demo]`는 기존 픽셀 마당의 렌더러·스프라이트·움직임으로 `topology@1`을 보여 주는 별도 화면이다(`console/office.py`, `console/office_screen.py`, `topology/feed.py`).
+  - 펫과 책상은 세션마다 하나씩이고, 자리는 고정이다.
+  - 조회는 읽기 전용이며 주기적으로 반복한다. 한 번에 하나만 돌고, 실패하면 마지막 관측을 유지한다.
+- 기존 마당, 콘솔, Snapshot v1은 바뀌지 않았다. React·PixiJS는 설치하지 않았다.
+
+### End-of-Day Checkpoint
+
+오늘의 최신 인계, 검증 시점, 미해결 결함(Phase 2.7-R, 독립 검수 BLOCKED), 내일 작업 순서는 [ORCA_STUDIO_PHASE_2_7_HANDOFF.md §9](ORCA_STUDIO_PHASE_2_7_HANDOFF.md#9-end-of-day-checkpoint-2026-11-29)에 있다.
